@@ -179,7 +179,7 @@ function formatText(text) {
 
 /**
  * Get current map context for AI
- * Returns a text summary of existing nodes
+ * Returns a text summary of existing nodes and their connections
  */
 async function getCurrentMapContext() {
     try {
@@ -190,14 +190,32 @@ async function getCurrentMapContext() {
             return null;
         }
 
-        // Create a simple text summary of nodes
-        const nodeList = map.nodes.map(node => {
-            const type = node.type || 'child';
-            const content = node.content?.substring(0, 100) || '(vuoto)';
-            return `- [${type}] "${content}"`;
-        }).join('\n');
+        // Create node summaries with IDs for reference
+        const nodeMap = new Map();
+        map.nodes.forEach(node => {
+            nodeMap.set(node.id, node.content?.substring(0, 80) || '(vuoto)');
+        });
 
-        return `La mappa contiene ${map.nodes.length} nodi:\n${nodeList}`;
+        // Build context string
+        let context = `NODI (${map.nodes.length}):\n`;
+        map.nodes.forEach((node, i) => {
+            const typeLabel = node.type === 'main' ? '🔵 PRINCIPALE' :
+                node.type === 'secondary' ? '🟢 SECONDARIO' : '⚪ DETTAGLIO';
+            const content = node.content?.substring(0, 80) || '(vuoto)';
+            context += `${i + 1}. ${typeLabel}: "${content}"\n`;
+        });
+
+        // Add connections info
+        if (map.connections && map.connections.length > 0) {
+            context += `\nCONNESSIONI (${map.connections.length}):\n`;
+            map.connections.forEach(conn => {
+                const from = nodeMap.get(conn.from)?.substring(0, 30) || '?';
+                const to = nodeMap.get(conn.to)?.substring(0, 30) || '?';
+                context += `- "${from}" → "${to}"\n`;
+            });
+        }
+
+        return context;
     } catch (e) {
         console.warn('Could not get map context:', e);
         return null;
