@@ -1087,6 +1087,90 @@ export function startSelectionBox(e) {
 }
 
 /**
+ * Start Lasso Selection (Freehand)
+ */
+export function startLassoSelection(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Clear selection unless shift is held
+    if (!e.shiftKey) {
+        selectNode(null);
+    }
+
+    // Create SVG for lasso line
+    const container = document.getElementById('canvas-container');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '9999';
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke', 'var(--accent)');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-dasharray', '5,5');
+    path.setAttribute('fill', 'rgba(99, 102, 241, 0.1)');
+    path.setAttribute('d', `M ${e.clientX} ${e.clientY}`);
+
+    svg.appendChild(path);
+    container.appendChild(svg);
+
+    const points = [{ x: e.clientX, y: e.clientY }];
+
+    const onMouseMove = (me) => {
+        points.push({ x: me.clientX, y: me.clientY });
+        const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+        path.setAttribute('d', d);
+    };
+
+    const onMouseUp = () => {
+        // Close the loop visually
+        path.setAttribute('d', path.getAttribute('d') + ' Z');
+
+        // Check intersection with nodes
+        const nodes = document.querySelectorAll('.node');
+        nodes.forEach(nodeEl => {
+            const rect = nodeEl.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            if (isPointInPolygon({ x: centerX, y: centerY }, points)) {
+                addToSelection(nodeEl.id);
+            }
+        });
+
+        // Cleanup
+        svg.remove();
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+/**
+ * Check if point is inside polygon (Ray casting algorithm)
+ */
+function isPointInPolygon(point, vs) {
+    const x = point.x, y = point.y;
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        const xi = vs[i].x, yi = vs[i].y;
+        const xj = vs[j].x, yj = vs[j].y;
+
+        const intersect = ((yi > y) !== (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+/**
  * Delete all selected nodes
  */
 export function deleteSelectedNodes() {

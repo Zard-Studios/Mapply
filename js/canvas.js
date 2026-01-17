@@ -92,8 +92,16 @@ function setupPanning() {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.font-size-dropdown')) return;
 
-        // Check for Box Selection Modifier (Ctrl/Cmd + Alt)
+        // LASSO SELECTION: Ctrl/Cmd + Alt
         if ((e.ctrlKey || e.metaKey) && e.altKey) {
+            import('./nodes.js').then(({ startLassoSelection }) => {
+                startLassoSelection(e);
+            });
+            return;
+        }
+
+        // BOX SELECTION: Ctrl/Cmd only
+        if (e.ctrlKey || e.metaKey) {
             import('./nodes.js').then(({ startSelectionBox }) => {
                 startSelectionBox(e);
             });
