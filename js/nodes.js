@@ -200,13 +200,19 @@ function setupNodeEvents(nodeEl, nodeData) {
     // Hide toolbar on blur (with delay for clicking toolbar buttons)
     contentEl.addEventListener('blur', () => {
         setTimeout(() => {
-            if (!document.activeElement?.closest('.node-toolbar') &&
-                !document.activeElement?.closest('.font-size-dropdown')) {
-                hideToolbar(toolbar);
-                hideFontDropdown(fontDropdown);
-                // Exit edit mode
-                contentEl.setAttribute('contenteditable', 'false');
+            const active = document.activeElement;
+            // Don't exit if focus went to toolbar or font controls
+            if (active?.closest('.node-toolbar') ||
+                active?.closest('.font-size-dropdown') ||
+                active?.closest('.font-size-input') ||
+                active?.closest('.font-size-control')) {
+                return; // Stay in edit mode
             }
+
+            // Exit edit mode
+            hideToolbar(toolbar);
+            hideFontDropdown(fontDropdown);
+            contentEl.setAttribute('contenteditable', 'false');
         }, 150);
     });
 
