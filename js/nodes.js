@@ -218,9 +218,8 @@ function setupNodeEvents(nodeEl, nodeData) {
         fontInput.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             if (size >= 8 && size <= 72) {
-                removeHighlight();
-                setNodeFontSize(nodeEl, nodeData, size, savedSelection);
-                savedSelection = null;
+                // Don't call removeHighlight here, let setNodeFontSize handle it or use it
+                setNodeFontSize(nodeEl, nodeData, size);
                 contentEl.focus();
             }
         });
@@ -236,9 +235,7 @@ function setupNodeEvents(nodeEl, nodeData) {
                 e.preventDefault();
                 const size = parseInt(e.target.value);
                 if (size >= 8 && size <= 72) {
-                    removeHighlight();
-                    setNodeFontSize(nodeEl, nodeData, size, savedSelection);
-                    savedSelection = null;
+                    setNodeFontSize(nodeEl, nodeData, size);
                     contentEl.focus();
                 }
             }
@@ -329,43 +326,49 @@ function hideAllToolbars(excludeNode = null) {
 /**
  * Set font size
  */
-function setNodeFontSize(nodeEl, nodeData, size, explicitRange = null) {
+function setNodeFontSize(nodeEl, nodeData, size) {
     const contentEl = nodeEl.querySelector('.node-content');
-    let range = explicitRange;
-    let hasSelection = !!explicitRange;
 
-    if (!hasSelection) {
-        const selection = window.getSelection();
-        hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed && contentEl.contains(selection.anchorNode);
-        if (hasSelection) range = selection.getRangeAt(0);
+    // 1. Check for visual highlight (fake selection)
+    const highlight = contentEl.querySelector('.temp-selection-highlight');
+    if (highlight) {
+        highlight.style.fontSize = `${size}px`;
+        highlight.classList.remove('temp-selection-highlight');
+        updateConnections(currentMap);
+        onNodeChange?.();
+        return;
     }
+    // 2. Fallback to real selection
+    const selection = window.getSelection();
+    let hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed && contentEl.contains(selection.anchorNode);
 
-    if (hasSelection && range) {
-        if (!contentEl.contains(range.commonAncestorContainer) && range.commonAncestorContainer !== contentEl) {
-            hasSelection = false;
+    if (hasSelection) {
+        const range = selection.getRangeAt(0);
+        if (contentEl.contains(range.commonAncestorContainer) || range.commonAncestorContainer === contentEl) {
+            const span = document.createElement('span');
+            span.style.fontSize = `${size}px`;
+            try {
+                const fragment = range.extractContents();
+                span.appendChild(fragment);
+                range.insertNode(span);
+
+                selection.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                selection.addRange(newRange);
+
+                updateConnections(currentMap);
+                onNodeChange?.();
+                return;
+            } catch (e) {
+                console.error('Font resize error', e);
+            }
         }
     }
 
-    if (hasSelection && range) {
-        const span = document.createElement('span');
-        span.style.fontSize = `${size}px`;
-        try {
-            const fragment = range.extractContents();
-            span.appendChild(fragment);
-            range.insertNode(span);
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            const newRange = document.createRange();
-            newRange.selectNodeContents(span);
-            selection.addRange(newRange);
-        } catch (e) {
-            console.error('Font resize error', e);
-            contentEl.style.fontSize = `${size}px`;
-        }
-    } else {
-        contentEl.style.fontSize = `${size}px`;
-        updateNodeField(nodeData.id, 'fontSize', size);
-    }
+    // 3. No selection = apply to entire node
+    contentEl.style.fontSize = `${size}px`;
+    updateNodeField(nodeData.id, 'fontSize', size);
     updateConnections(currentMap);
 }
 
