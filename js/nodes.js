@@ -785,15 +785,83 @@ function updateToolbarState(toolbar, contentEl) {
 }
 
 /**
+ * Duplicate selected nodes (Alt+Drag behavior)
+ */
+function duplicateSelectedNodes() {
+    if (selectedNodeIds.size === 0) return;
+
+    const idMapping = new Map(); // Old ID -> New ID
+    const newSelectedIds = new Set();
+    const newNodes = [];
+
+    // 1. Duplicate Nodes
+    selectedNodeIds.forEach(id => {
+        const original = currentMap.nodes.find(n => n.id === id);
+        if (!original) return;
+
+        const newNode = createNode({
+            type: original.type, // Copy type
+            content: original.content, // Copy content
+            fontSize: original.fontSize,
+            x: original.x, // Start at same position
+            y: original.y
+        });
+
+        newNodes.push(newNode);
+        idMapping.set(id, newNode.id);
+        newSelectedIds.add(newNode.id);
+    });
+
+    // 2. Duplicate internal connections (if both ends are selected)
+    const newConnections = [];
+    currentMap.connections.forEach(conn => {
+        if (selectedNodeIds.has(conn.from) && selectedNodeIds.has(conn.to)) {
+            newConnections.push(createConnection(
+                idMapping.get(conn.from),
+                idMapping.get(conn.to)
+            ));
+        }
+    });
+
+    // 3. Apply changes
+    currentMap.nodes.push(...newNodes);
+    currentMap.connections.push(...newConnections);
+
+    // 4. Render new nodes
+    newNodes.forEach(node => renderNode(node));
+
+    // 5. Select NEW nodes
+    selectNode(null); // Clear old selection
+    newSelectedIds.forEach(id => {
+        selectedNodeIds.add(id);
+        document.getElementById(id)?.classList.add('selected');
+    });
+
+    updateConnections(currentMap);
+    showToast('Duplicato', 'info', 1000);
+}
+
+/**
  * Start dragging
  */
 function startDrag(e, nodeEl, nodeData) {
     if (dragState) return;
 
+    // ALT + DRAG = DUPLICATE
+    if (e.altKey) {
+        duplicateSelectedNodes();
+        // proceed to drag the NEW nodes
+    }
+
     // Selection logic logic removed - handled in mousedown
 
     // If the node is not selected (e.g. we just deselected it via Shift-click), don't drag it
-    if (!selectedNodeIds.has(nodeData.id)) return;
+    if (!selectedNodeIds.has(nodeData.id) && !e.altKey) return;
+    // Note: if altKey was pressed, nodeData.id (original) is NOT in selectedNodeIds anymore.
+    // But we want to continue dragging the NEW nodes.
+    // So if altKey is true, we skip this check or check the mapped new node?
+    // Actually, simply: if we duplicated, selectedNodeIds IS POPULATED with new nodes.
+    // So we just need to ensure we don't return early.
 
     // Calculate initial offsets for ALL selected nodes
     const initialPositions = new Map();

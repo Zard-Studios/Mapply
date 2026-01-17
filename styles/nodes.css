@@ -83,8 +83,7 @@
    NODE TYPES
    ===================================================== */
 .node.node-main {
-    min-width: 100px;
-    border-width: 2px;
+    /* Removed fixed min-width to match secondary nodes */
 }
 
 /* Secondary type nodes */
