@@ -258,13 +258,8 @@ function setupNodeEvents(nodeEl, nodeData) {
         fontInput.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             if (size >= 8 && size <= 72) {
-                // Restore selection before applying
-                if (savedSelection) {
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(savedSelection);
-                }
-                setNodeFontSize(nodeEl, nodeData, size);
+                // Pass savedSelection if it exists
+                setNodeFontSize(nodeEl, nodeData, size, savedSelection);
                 savedSelection = null;
                 contentEl.focus();
             }
@@ -275,13 +270,8 @@ function setupNodeEvents(nodeEl, nodeData) {
                 e.preventDefault();
                 const size = parseInt(e.target.value);
                 if (size >= 8 && size <= 72) {
-                    // Restore selection before applying
-                    if (savedSelection) {
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(savedSelection);
-                    }
-                    setNodeFontSize(nodeEl, nodeData, size);
+                    // Pass savedSelection if it exists
+                    setNodeFontSize(nodeEl, nodeData, size, savedSelection);
                     savedSelection = null;
                     contentEl.focus();
                 }
@@ -387,13 +377,30 @@ function hideToolbar(toolbar) {
 /**
  * Hide all toolbars
  */
+/**
+ * Hide all toolbars AND disable editing
+ */
 function hideAllToolbars() {
     document.querySelectorAll('.node-toolbar[data-visible="true"]').forEach(t => {
         t.dataset.visible = 'false';
+
+        // Find associated content element and disable editing
+        const node = t.closest('.node');
+        if (node) {
+            const content = node.querySelector('.node-content');
+            if (content) content.setAttribute('contenteditable', 'false');
+        }
     });
+
     document.querySelectorAll('.font-size-dropdown[data-visible="true"]').forEach(d => {
         d.dataset.visible = 'false';
     });
+
+    // Safety check: ensure no contenteditable remains
+    document.querySelectorAll('.node-content[contenteditable="true"]').forEach(el => {
+        el.setAttribute('contenteditable', 'false');
+    });
+
     activeToolbar = null;
 }
 
@@ -414,21 +421,42 @@ function hideFontDropdown(dropdown) {
 /**
  * Set font size - applies to SELECTED text or entire node
  */
-function setNodeFontSize(nodeEl, nodeData, size) {
+/**
+ * Set font size - applies to SELECTED text or entire node
+ * @param {HTMLElement} nodeEl
+ * @param {Object} nodeData
+ * @param {number} size
+ * @param {Range} [explicitRange] - Optional range to force selection
+ */
+function setNodeFontSize(nodeEl, nodeData, size, explicitRange = null) {
     const contentEl = nodeEl.querySelector('.node-content');
-    const fontBtn = nodeEl.querySelector('.font-size-btn .toolbar-label');
     const dropdown = nodeEl.querySelector('.font-size-dropdown');
 
-    // Check if there's selected text
-    const selection = window.getSelection();
-    const hasSelection = selection &&
-        selection.rangeCount > 0 &&
-        !selection.isCollapsed &&
-        contentEl.contains(selection.anchorNode);
+    // Use explicit range if provided, otherwise current selection
+    let range = explicitRange;
+    let hasSelection = !!explicitRange;
 
-    if (hasSelection) {
+    if (!hasSelection) {
+        const selection = window.getSelection();
+        hasSelection = selection &&
+            selection.rangeCount > 0 &&
+            !selection.isCollapsed &&
+            contentEl.contains(selection.anchorNode);
+
+        if (hasSelection) {
+            range = selection.getRangeAt(0);
+        }
+    }
+
+    // Safety check: verify range is actually within contentEl
+    if (hasSelection && range) {
+        if (!contentEl.contains(range.commonAncestorContainer) && range.commonAncestorContainer !== contentEl) {
+            hasSelection = false;
+        }
+    }
+
+    if (hasSelection && range) {
         // Apply font size to SELECTED text only using a span
-        const range = selection.getRangeAt(0);
 
         // Create a span with the new font size
         const span = document.createElement('span');
@@ -441,12 +469,14 @@ function setNodeFontSize(nodeEl, nodeData, size) {
             range.insertNode(span);
 
             // Re-select the text
+            const selection = window.getSelection();
             selection.removeAllRanges();
             const newRange = document.createRange();
             newRange.selectNodeContents(span);
             selection.addRange(newRange);
         } catch (e) {
             // Fallback: apply to entire node
+            console.error('Font resize error', e);
             contentEl.style.fontSize = `${size}px`;
         }
     } else {
@@ -456,8 +486,8 @@ function setNodeFontSize(nodeEl, nodeData, size) {
         updateNodeField(nodeData.id, 'fontSize', size);
     }
 
-    // Update button display
-    fontBtn.textContent = size;
+    // Update button display handled by inputs
+
 
     // Update active state
     dropdown.querySelectorAll('.font-size-option').forEach(opt => {
