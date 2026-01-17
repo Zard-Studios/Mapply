@@ -331,14 +331,51 @@ function hideFontDropdown(dropdown) {
 }
 
 /**
- * Set node font size
+ * Set font size - applies to SELECTED text or entire node
  */
 function setNodeFontSize(nodeEl, nodeData, size) {
     const contentEl = nodeEl.querySelector('.node-content');
     const fontBtn = nodeEl.querySelector('.font-size-btn .toolbar-label');
     const dropdown = nodeEl.querySelector('.font-size-dropdown');
 
-    contentEl.style.fontSize = `${size}px`;
+    // Check if there's selected text
+    const selection = window.getSelection();
+    const hasSelection = selection &&
+        selection.rangeCount > 0 &&
+        !selection.isCollapsed &&
+        contentEl.contains(selection.anchorNode);
+
+    if (hasSelection) {
+        // Apply font size to SELECTED text only using a span
+        const range = selection.getRangeAt(0);
+
+        // Create a span with the new font size
+        const span = document.createElement('span');
+        span.style.fontSize = `${size}px`;
+
+        // Extract selection and wrap in span
+        try {
+            const fragment = range.extractContents();
+            span.appendChild(fragment);
+            range.insertNode(span);
+
+            // Re-select the text
+            selection.removeAllRanges();
+            const newRange = document.createRange();
+            newRange.selectNodeContents(span);
+            selection.addRange(newRange);
+        } catch (e) {
+            // Fallback: apply to entire node
+            contentEl.style.fontSize = `${size}px`;
+        }
+    } else {
+        // No selection = apply to entire node
+        contentEl.style.fontSize = `${size}px`;
+        // Also save as default for this node
+        updateNodeField(nodeData.id, 'fontSize', size);
+    }
+
+    // Update button display
     fontBtn.textContent = size;
 
     // Update active state
@@ -346,10 +383,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
         opt.classList.toggle('active', parseInt(opt.dataset.size) === size);
     });
 
-    // Save to data
-    updateNodeField(nodeData.id, 'fontSize', size);
-
-    // Update connections (node size changed)
+    // Update connections (node size may have changed)
     updateConnections(currentMap);
 }
 

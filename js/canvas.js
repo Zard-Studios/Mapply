@@ -50,6 +50,7 @@ export function initCanvas(options = {}) {
     // Setup event listeners
     setupPanning();
     setupZoom();
+    setupKeyboardShortcuts();
 
     // Initial transform
     applyTransform();
@@ -78,30 +79,22 @@ function setupPanning() {
         }
     });
 
-    // Mouse panning - use CAPTURE phase to intercept before nodes
-    // This is critical for spacebar pan to work over nodes
+    // Mouse panning - SIMPLE: click anywhere that's NOT a node
     canvasContainer.addEventListener('mousedown', (e) => {
-        // Middle mouse button works ANYWHERE
-        if (e.button === 1) {
-            startPan(e.clientX, e.clientY);
-            e.preventDefault();
-            e.stopPropagation(); // Don't let nodes get this event
-            return;
-        }
-        // Left button with spacebar = pan anywhere (Figma style)
-        if (e.button === 0 && isSpacePressed) {
-            startPan(e.clientX, e.clientY);
-            canvasContainer.style.cursor = 'grabbing';
-            e.preventDefault();
-            e.stopPropagation(); // CRITICAL: Stop nodes from getting this event
-            return;
-        }
-        // Left button only on canvas background (not on nodes)
-        if (e.button === 0 && e.target === canvasContainer) {
-            startPan(e.clientX, e.clientY);
-            e.preventDefault();
-        }
-    }, true); // CAPTURE PHASE - intercepts BEFORE bubbling
+        // Only left mouse button
+        if (e.button !== 0) return;
+
+        // If clicking on a node or its children, don't pan
+        if (e.target.closest('.node')) return;
+
+        // If clicking on toolbar or similar UI, don't pan
+        if (e.target.closest('.node-toolbar')) return;
+        if (e.target.closest('.font-size-dropdown')) return;
+
+        // Otherwise, START PANNING!
+        startPan(e.clientX, e.clientY);
+        e.preventDefault();
+    });
 
     document.addEventListener('mousemove', (e) => {
         if (isPanning) {
@@ -348,4 +341,90 @@ export function centerOn(canvasX, canvasY) {
     offsetX = rect.width / 2 - canvasX * scale;
     offsetY = rect.height / 2 - canvasY * scale;
     applyTransform();
+}
+
+/**
+ * Setup keyboard shortcuts for canvas
+ */
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Don't trigger if editing text
+        if (isEditingText()) return;
+
+        // F = Fit to view (find your project!)
+        if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            fitToView();
+        }
+
+        // 0 or Home = Reset zoom to 100%
+        if (e.key === '0' || e.key === 'Home') {
+            e.preventDefault();
+            resetZoom();
+        }
+    });
+}
+
+/**
+ * Fit all nodes in the viewport
+ * Calculates bounding box and adjusts zoom/pan to show everything
+ */
+export function fitToView() {
+    const nodes = nodesLayer.querySelectorAll('.node');
+    if (nodes.length === 0) {
+        // No nodes - just reset
+        resetZoom();
+        return;
+    }
+
+    // Calculate bounding box of all nodes (in canvas space)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nodes.forEach(node => {
+        const x = parseFloat(node.style.left) || 0;
+        const y = parseFloat(node.style.top) || 0;
+        const w = node.offsetWidth;
+        const h = node.offsetHeight;
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w);
+        maxY = Math.max(maxY, y + h);
+    });
+
+    // Add padding
+    const padding = 60;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+
+    // Calculate content size
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    // Calculate container size
+    const containerRect = canvasContainer.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+
+    // Calculate scale to fit
+    const scaleX = containerWidth / contentWidth;
+    const scaleY = containerHeight / contentHeight;
+    let newScale = Math.min(scaleX, scaleY);
+
+    // Clamp scale to limits
+    newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+
+    // Calculate center of content
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Set new transform
+    scale = newScale;
+    offsetX = containerWidth / 2 - centerX * scale;
+    offsetY = containerHeight / 2 - centerY * scale;
+
+    applyTransform();
+    updateZoomDisplay();
 }
