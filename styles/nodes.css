@@ -12,9 +12,10 @@
    ===================================================== */
 .node {
     position: absolute;
-    min-width: 140px;
+    min-width: 40px;
     max-width: 360px;
-    padding: var(--spacing-md);
+    width: fit-content;
+    padding: var(--spacing-sm) var(--spacing-md);
 
     /* Glass effect */
     background: var(--surface);
@@ -72,7 +73,7 @@
    NODE TYPES
    ===================================================== */
 .node.node-main {
-    min-width: 180px;
+    min-width: 100px;
     border-width: 2px;
 }
 
@@ -94,6 +95,7 @@
     width: 100%;
     min-height: 1.5em;
     word-wrap: break-word;
+    text-align: center;
     user-select: none;
 }
 
