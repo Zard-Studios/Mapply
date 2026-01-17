@@ -51,6 +51,7 @@ export function initCanvas(options = {}) {
     setupPanning();
     setupZoom();
     setupKeyboardShortcuts();
+    setupDoubleClick();
 
     // Initial transform
     applyTransform();
@@ -370,6 +371,24 @@ function setupKeyboardShortcuts() {
             e.preventDefault();
             resetZoom();
         }
+    });
+}
+
+/**
+ * Setup double-click to create node (ComfyUI style)
+ */
+function setupDoubleClick() {
+    canvasContainer.addEventListener('dblclick', (e) => {
+        // Ignore if clicking on a node or UI
+        if (e.target.closest('.node') || e.target.closest('.node-toolbar') || e.target.closest('button')) return;
+
+        e.preventDefault(); // Prevent default text selection or zoom
+
+        const { x, y } = screenToCanvas(e.clientX, e.clientY);
+
+        import('./nodes.js').then(({ addNodeAtLocation }) => {
+            addNodeAtLocation(x, y);
+        });
     });
 }
 
