@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/canvas.css">
   <link rel="stylesheet" href="styles/nodes.css">
+  <link rel="stylesheet" href="styles/context-menu.css">
 </head>
 
 <body>
@@ -209,6 +210,20 @@
          TOAST NOTIFICATIONS
          ------------------------------------------------- -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Custom Context Menu -->
+    <div id="context-menu" class="context-menu">
+      <div class="menu-item" data-action="add-node">
+        <span class="menu-icon">+</span> Nuovo Nodo
+      </div>
+      <div class="menu-item" data-action="paste">
+        <span class="menu-icon">📋</span> Incolla
+      </div>
+      <div class="divider"></div>
+      <div class="menu-item" data-action="reset-view">
+        Reset Vista
+      </div>
+    </div>
 
   </div>
 

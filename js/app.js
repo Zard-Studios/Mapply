@@ -21,10 +21,10 @@ import {
     initUI,
     showToast,
     setMapTitle,
-    getMapTitle,
     onMapTitleChange,
     renderMapList,
-    updateSidebarMapTitle
+    updateSidebarMapTitle,
+    initContextMenu
 } from './ui.js';
 import { isAIEnabled, generateMapFromText } from './aiAdapter.js';
 import { history } from './history.js';
@@ -378,10 +378,13 @@ function setupEventListeners() {
     // Save before unload
     window.addEventListener('beforeunload', () => {
         if (currentMap) {
-            // Synchronous save attempt
-            navigator.sendBeacon?.('/api/save', JSON.stringify(currentMap));
+            // Sync save attempt (best effort)
+            localStorage.setItem('last_map_id', currentMap.id);
         }
     });
+
+    // Initialize Context Menu
+    initContextMenu();
 }
 
 /**

@@ -226,3 +226,86 @@ export function updateSidebarMapTitle(mapId, newTitle) {
         }
     }
 }
+
+/**
+ * Initialize Context Menu
+ */
+export function initContextMenu() {
+    const menu = document.getElementById('context-menu');
+    if (!menu) return;
+
+    let clickX = 0;
+    let clickY = 0;
+
+    // 1. Disable native menu & show custom
+    document.addEventListener('contextmenu', (e) => {
+        // Keep native menu for Inputs/Textareas so user can copy/paste text
+        if (e.target.closest('input') || e.target.closest('textarea') || e.target.closest('[contenteditable="true"]')) {
+            return;
+        }
+
+        e.preventDefault();
+
+        clickX = e.clientX;
+        clickY = e.clientY;
+
+        // Position menu
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+        menu.style.display = 'flex';
+        // Force reflow
+        void menu.offsetWidth;
+        menu.classList.add('visible');
+
+        // Adjust bounds if off-screen
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+        }
+    });
+
+    // 2. Hide on click anywhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.context-menu')) {
+            menu.classList.remove('visible');
+            setTimeout(() => {
+                if (!menu.classList.contains('visible')) menu.style.display = 'none';
+            }, 100);
+        }
+    });
+
+    // 3. Handle Actions
+    menu.addEventListener('click', (e) => {
+        const item = e.target.closest('.menu-item');
+        if (!item) return;
+
+        const action = item.dataset.action;
+
+        // Execute action
+        if (action === 'add-node') {
+            import('./canvas.js').then(({ screenToCanvas }) => {
+                const { x, y } = screenToCanvas(clickX, clickY);
+                import('./nodes.js').then(({ addNodeAtLocation }) => {
+                    addNodeAtLocation(x, y);
+                });
+            });
+        }
+        else if (action === 'paste') {
+            import('./nodes.js').then(({ pasteSelection }) => {
+                pasteSelection();
+            });
+        }
+        else if (action === 'reset-view') {
+            import('./canvas.js').then(({ fitToView }) => {
+                fitToView();
+            });
+        }
+
+        // Close menu
+        menu.classList.remove('visible');
+        menu.style.display = 'none'; // Instant hide
+    });
+}
