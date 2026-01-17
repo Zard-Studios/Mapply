@@ -62,3 +62,9 @@
     background: var(--border-subtle);
     margin: 4px 0;
 }
+
+.menu-item.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    /* Actually disabling clicks */
+}
