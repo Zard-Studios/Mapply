@@ -44,9 +44,9 @@ export function updateConnections(map) {
 
     currentMap = map;
 
-    // Clear existing paths (but keep preview)
-    const existingPaths = connectionsLayer.querySelectorAll('.connection-path:not(.preview)');
-    existingPaths.forEach(path => path.remove());
+    // Clear existing connections (wrappers)
+    const existingConnections = connectionsLayer.querySelectorAll('.connection-wrapper');
+    existingConnections.forEach(wrapper => wrapper.remove());
 
     // Get canvas container bounds for relative positioning
     const containerRect = canvasContainer.getBoundingClientRect();
@@ -92,33 +92,84 @@ function createConnectionPath(conn, containerRect) {
     const fromAnchor = getAnchorPoint(fromRect, toRect, containerRect);
     const toAnchor = getAnchorPoint(toRect, fromRect, containerRect);
 
-    // Create smooth Bezier curve from anchor to anchor
-    const d = createBezierPath(fromAnchor, toAnchor);
+    const pathData = createBezierPath(fromAnchor, toAnchor);
 
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('class', 'connection-path');
-    path.setAttribute('d', d);
-    path.setAttribute('data-from', conn.from);
-    path.setAttribute('data-to', conn.to);
-    path.setAttribute('id', conn.id);
+    // Create a group for the connection to host the invisible 'hit area' and the visible path
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('class', 'connection-wrapper');
+    group.setAttribute('id', conn.id);
+    group.setAttribute('data-from', conn.from);
+    group.setAttribute('data-to', conn.to);
 
-    // Hover effect
-    path.addEventListener('mouseenter', () => {
-        path.classList.add('highlighted');
-    });
+    // 1. HIT AREA: Invisible thick path for easy interaction
+    const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hitArea.setAttribute('class', 'connection-hit-area');
+    hitArea.setAttribute('d', pathData);
+    group.appendChild(hitArea);
 
-    path.addEventListener('mouseleave', () => {
-        path.classList.remove('highlighted');
-    });
+    // 2. VISIBLE PATH: The actual line the user sees
+    const visiblePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    visiblePath.setAttribute('class', 'connection-path');
+    visiblePath.setAttribute('d', pathData);
+    group.appendChild(visiblePath);
 
-    // Right-click to delete connection
-    path.addEventListener('contextmenu', (e) => {
+    // INTERACTION LOGIC
+    const handleEnter = () => {
+        group.classList.add('highlighted');
+        showDeleteHint(conn.id);
+    };
+    const handleLeave = () => {
+        group.classList.remove('highlighted');
+        hideDeleteHint();
+    };
+
+    group.addEventListener('mouseenter', handleEnter);
+    group.addEventListener('mouseleave', handleLeave);
+
+    // Right-click to delete
+    group.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        hideDeleteHint();
         deleteConnection(conn.id);
     });
 
-    return path;
+    return group;
+}
+
+/**
+ * Show a small floating hint for deletion
+ */
+let currentHint = null;
+function showDeleteHint(connId) {
+    if (currentHint) currentHint.remove();
+
+    currentHint = document.createElement('div');
+    currentHint.className = 'connection-delete-hint';
+    currentHint.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+            <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        <span>Tasto destro per eliminare</span>
+    `;
+    document.body.appendChild(currentHint);
+
+    const onMove = (e) => {
+        if (!currentHint) {
+            document.removeEventListener('mousemove', onMove);
+            return;
+        }
+        currentHint.style.left = `${e.clientX + 15}px`;
+        currentHint.style.top = `${e.clientY + 15}px`;
+    };
+    document.addEventListener('mousemove', onMove);
+}
+
+function hideDeleteHint() {
+    if (currentHint) {
+        currentHint.remove();
+        currentHint = null;
+    }
 }
 
 /**
@@ -219,8 +270,8 @@ function deleteConnection(connectionId) {
 
     currentMap.connections.splice(index, 1);
 
-    const path = connectionsLayer?.querySelector(`#${connectionId}`);
-    path?.remove();
+    const group = connectionsLayer?.querySelector(`#${connectionId}`);
+    group?.remove();
 
     onConnectionDelete?.();
 }
@@ -292,10 +343,10 @@ export function removeConnection(connectionId) {
  * Highlight connections for a specific node
  */
 export function highlightNodeConnections(nodeId) {
-    const paths = connectionsLayer?.querySelectorAll('.connection-path');
-    paths?.forEach(path => {
-        if (path.dataset.from === nodeId || path.dataset.to === nodeId) {
-            path.classList.add('highlighted');
+    const wrappers = connectionsLayer?.querySelectorAll('.connection-wrapper');
+    wrappers?.forEach(wrapper => {
+        if (wrapper.dataset.from === nodeId || wrapper.dataset.to === nodeId) {
+            wrapper.classList.add('highlighted');
         }
     });
 }
@@ -304,8 +355,8 @@ export function highlightNodeConnections(nodeId) {
  * Clear all connection highlights
  */
 export function clearConnectionHighlights() {
-    const paths = connectionsLayer?.querySelectorAll('.connection-path.highlighted');
-    paths?.forEach(path => {
-        path.classList.remove('highlighted');
+    const wrappers = connectionsLayer?.querySelectorAll('.connection-wrapper.highlighted');
+    wrappers?.forEach(wrapper => {
+        wrapper.classList.remove('highlighted');
     });
 }
