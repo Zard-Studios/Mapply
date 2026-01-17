@@ -43,6 +43,8 @@ async function init() {
 
         // Initialize UI components
         initUI();
+        import('./ai/ai_ui.js').then(({ initAIUI }) => initAIUI());
+
         initConnections({
             onConnectionDelete: () => {
                 // Connection deletion usually happens via direct manipulation
