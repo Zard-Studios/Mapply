@@ -595,6 +595,9 @@ function updateToolbarState(toolbar, contentEl) {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
+        let container = null;
+
+        // ELEMENT NODE SELECTION Strategy:
         // ELEMENT NODE SELECTION Strategy:
         // If startContainer is an element (e.g. contentEl), the selection starts at a specific child index.
         // We must look at that child node to find the style, not the container itself.
