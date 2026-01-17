@@ -233,25 +233,59 @@ function setupNodeEvents(nodeEl, nodeData) {
     let savedSelection = null; // Save selection before input focus
 
     if (fontInput) {
-        // Save selection BEFORE focus moves to input
+        // Save selection AND highlight visually BEFORE focus moves to input
         fontInput.addEventListener('mousedown', (e) => {
             e.stopPropagation(); // Don't trigger drag
 
-            // Save the current selection from content area
             const selection = window.getSelection();
-            if (selection.rangeCount > 0 && contentEl.contains(selection.anchorNode)) {
+            if (selection.rangeCount > 0 && contentEl.contains(selection.anchorNode) && !selection.isCollapsed) {
                 savedSelection = selection.getRangeAt(0).cloneRange();
+
+                // Add visual highlight
+                try {
+                    const range = selection.getRangeAt(0);
+                    const span = document.createElement('span');
+                    span.className = 'temp-selection-highlight';
+                    range.surroundContents(span);
+                    // selection object is now collapsed around span, but savedSelection keeps original coords
+                } catch (err) {
+                    console.log('Cannot highlight complex selection', err);
+                }
             }
         });
+
+        // Function to clean up highlight
+        const removeHighlight = () => {
+            const highlights = contentEl.querySelectorAll('.temp-selection-highlight');
+            highlights.forEach(span => {
+                // Unwrap: replace span with its own children
+                while (span.firstChild) {
+                    span.parentNode.insertBefore(span.firstChild, span);
+                }
+                span.remove();
+            });
+            // Normalize text nodes
+            contentEl.normalize();
+        };
 
         fontInput.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             if (size >= 8 && size <= 72) {
-                // Pass savedSelection if it exists
+                removeHighlight();
                 setNodeFontSize(nodeEl, nodeData, size, savedSelection);
                 savedSelection = null;
                 contentEl.focus();
             }
+        });
+
+        // Also remove highlight on blur if no change made
+        fontInput.addEventListener('blur', () => {
+            // Small delay to allow change event to fire first if needed
+            setTimeout(() => {
+                removeHighlight();
+                // If we didn't apply change, selection might be lost or messed up by unwrap
+                // but usually user clicks back to content so it's fine
+            }, 100);
         });
 
         fontInput.addEventListener('keydown', (e) => {
@@ -259,7 +293,7 @@ function setupNodeEvents(nodeEl, nodeData) {
                 e.preventDefault();
                 const size = parseInt(e.target.value);
                 if (size >= 8 && size <= 72) {
-                    // Pass savedSelection if it exists
+                    removeHighlight();
                     setNodeFontSize(nodeEl, nodeData, size, savedSelection);
                     savedSelection = null;
                     contentEl.focus();

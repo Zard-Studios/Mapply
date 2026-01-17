@@ -268,9 +268,16 @@
 .font-size-unit {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     padding-right: 4px;
     user-select: none;
+}
+
+/* Fake selection to keep highlight visible when input has focus */
+.temp-selection-highlight {
+    background-color: rgba(99, 102, 241, 0.3) !important;
+    /* Accent with opacity */
+    border-radius: 2px;
 }
 
 /* Delete button */
