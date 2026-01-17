@@ -216,13 +216,16 @@ function setupNodeEvents(nodeEl, nodeData) {
     });
 
     contentEl.addEventListener('blur', () => {
+        // We still need a small delay for blur to check if focus moved to toolbar
         setTimeout(() => {
             const active = document.activeElement;
             const toToolbar = active?.closest('.node-toolbar');
             if (toToolbar && toToolbar.closest('.node') === nodeEl) return;
-            hideToolbar(toolbar);
-            contentEl.setAttribute('contenteditable', 'false');
-            window.getSelection().removeAllRanges();
+
+            // If we are actually leaving the node area, exit edit mode
+            if (contentEl.getAttribute('contenteditable') === 'true') {
+                exitEditMode(contentEl, toolbar);
+            }
         }, 150);
     });
 
@@ -358,9 +361,10 @@ function setupNodeEvents(nodeEl, nodeData) {
                 // Let Shift+Enter perform its default action (newline)
                 return;
             } else {
-                // Enter only: commit changes and exit
+                // Enter only: commit changes and exit immediately
                 e.preventDefault();
-                contentEl.blur();
+                exitEditMode(contentEl, toolbar);
+                contentEl.blur(); // Still blur to release actual focus
             }
         }
 
@@ -398,6 +402,18 @@ function enterEditMode(contentEl, toolbar) {
     selection.removeAllRanges();
     selection.addRange(range);
     showToolbar(toolbar);
+}
+
+/**
+ * Exit edit mode immediately
+ */
+function exitEditMode(contentEl, toolbar) {
+    const nodeEl = contentEl.closest('.node');
+    if (nodeEl) nodeEl.classList.remove('editing');
+
+    contentEl.setAttribute('contenteditable', 'false');
+    hideToolbar(toolbar);
+    window.getSelection().removeAllRanges();
 }
 
 /**
