@@ -1,0 +1,340 @@
+/**
+ * nodes.css – Node card styles
+ * ComfyUI-inspired glass cards with soft glow
+ */
+
+/* =====================================================
+   NODE CARD – Base styles
+   ===================================================== */
+.node {
+    position: absolute;
+    min-width: 180px;
+    max-width: 280px;
+    padding: var(--spacing-md);
+
+    /* Glass effect */
+    background: var(--surface);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
+
+    /* Borders and shadows */
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+
+    /* Interaction */
+    cursor: grab;
+    user-select: none;
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        border-color var(--transition-fast);
+
+    /* Fade-in animation */
+    animation: node-appear var(--transition-normal) ease-out;
+}
+
+@keyframes node-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Dragging state */
+.node.dragging {
+    cursor: grabbing;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+}
+
+/* Hover state */
+.node:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Selected state */
+.node.selected {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+/* =====================================================
+   NODE TYPES
+   ===================================================== */
+
+/* Main node (larger, accented) */
+.node.node-main {
+    min-width: 220px;
+    padding: var(--spacing-lg) var(--spacing-md);
+    border-width: 2px;
+}
+
+.node.node-main .node-title {
+    font-size: var(--font-size-xl);
+}
+
+/* Secondary node */
+.node.node-secondary {
+    /* Default styles */
+}
+
+/* =====================================================
+   NODE COLOR ACCENTS
+   ===================================================== */
+.node[data-color="purple"] {
+    border-top: 3px solid var(--node-purple);
+}
+
+.node[data-color="blue"] {
+    border-top: 3px solid var(--node-blue);
+}
+
+.node[data-color="green"] {
+    border-top: 3px solid var(--node-green);
+}
+
+.node[data-color="orange"] {
+    border-top: 3px solid var(--node-orange);
+}
+
+.node[data-color="pink"] {
+    border-top: 3px solid var(--node-pink);
+}
+
+/* =====================================================
+   NODE CONTENT
+   ===================================================== */
+.node-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.node-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.node-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.node-title {
+    flex: 1;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    outline: none;
+    border: none;
+    background: none;
+    padding: 0;
+    min-width: 0;
+}
+
+.node-title:focus {
+    background: var(--surface-hover);
+    border-radius: var(--radius-sm);
+    padding: 2px 4px;
+    margin: -2px -4px;
+}
+
+.node-text {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    outline: none;
+    border: none;
+    background: none;
+    padding: 0;
+    width: 100%;
+    resize: none;
+}
+
+.node-text:focus {
+    background: var(--surface-hover);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin: -4px;
+}
+
+/* =====================================================
+   NODE ACTIONS (visible on hover)
+   ===================================================== */
+.node-actions {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.node:hover .node-actions {
+    opacity: 1;
+}
+
+.node-action-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.node-action-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+.node-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
+.node-action-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* =====================================================
+   CONNECTION HANDLES
+   ===================================================== */
+.node-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.node:hover .node-handle,
+.node.selected .node-handle {
+    opacity: 1;
+}
+
+.node-handle:hover {
+    transform: scale(1.3);
+    background: var(--accent);
+}
+
+/* Handle positions */
+.node-handle-top {
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.node-handle-bottom {
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.node-handle-left {
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.node-handle-right {
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.node:hover .node-handle-top,
+.node.selected .node-handle-top {
+    transform: translateX(-50%);
+}
+
+.node:hover .node-handle-bottom,
+.node.selected .node-handle-bottom {
+    transform: translateX(-50%);
+}
+
+.node:hover .node-handle-left,
+.node.selected .node-handle-left {
+    transform: translateY(-50%);
+}
+
+.node:hover .node-handle-right,
+.node.selected .node-handle-right {
+    transform: translateY(-50%);
+}
+
+/* =====================================================
+   COLOR PICKER (for node customization)
+   ===================================================== */
+.node-color-picker {
+    display: flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.color-option {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.color-option:hover {
+    transform: scale(1.2);
+}
+
+.color-option.selected {
+    border-color: var(--text-primary);
+}
+
+.color-option[data-color="purple"] {
+    background: var(--node-purple);
+}
+
+.color-option[data-color="blue"] {
+    background: var(--node-blue);
+}
+
+.color-option[data-color="green"] {
+    background: var(--node-green);
+}
+
+.color-option[data-color="orange"] {
+    background: var(--node-orange);
+}
+
+.color-option[data-color="pink"] {
+    background: var(--node-pink);
+}

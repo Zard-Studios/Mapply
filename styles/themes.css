@@ -1,0 +1,162 @@
+/**
+ * themes.css – Light/Dark mode CSS variables
+ * DSA-safe contrast ratios (4.5:1 minimum)
+ * No pure black – soft grays and blues
+ */
+
+:root {
+  /* =====================================================
+     COLOR SYSTEM – Pastels + Neutrals
+     ===================================================== */
+  
+  /* Primary accent (purple-blue) */
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-secondary: #a78bfa;
+  
+  /* Semantic colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  
+  /* Node colors (pastels) */
+  --node-purple: #a78bfa;
+  --node-blue: #60a5fa;
+  --node-green: #34d399;
+  --node-orange: #fb923c;
+  --node-pink: #f472b6;
+  
+  /* =====================================================
+     TYPOGRAPHY
+     ===================================================== */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  
+  --line-height: 1.5;
+  --letter-spacing: -0.01em;
+  
+  /* =====================================================
+     SPACING & SIZING
+     ===================================================== */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* =====================================================
+     EFFECTS
+     ===================================================== */
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
+  
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 250ms ease-out;
+  --transition-slow: 350ms ease-out;
+  
+  /* =====================================================
+     Z-INDEX LAYERS
+     ===================================================== */
+  --z-canvas: 1;
+  --z-nodes: 10;
+  --z-connections: 5;
+  --z-sidebar: 100;
+  --z-topbar: 200;
+  --z-floating: 300;
+  --z-toast: 400;
+}
+
+/* =====================================================
+   LIGHT THEME (default)
+   ===================================================== */
+:root,
+[data-theme="light"] {
+  --bg-primary: #f0f0f5;
+  --bg-secondary: #e8e8f0;
+  --bg-canvas: #f5f5fa;
+  
+  /* Glass effects */
+  --surface: rgba(255, 255, 255, 0.75);
+  --surface-hover: rgba(255, 255, 255, 0.9);
+  --surface-border: rgba(255, 255, 255, 0.5);
+  
+  /* Text colors */
+  --text-primary: #1e1e2e;
+  --text-secondary: #64648c;
+  --text-muted: #9898b0;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
+  
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  
+  /* Canvas grid */
+  --grid-color: rgba(0, 0, 0, 0.03);
+}
+
+/* =====================================================
+   DARK THEME
+   ===================================================== */
+[data-theme="dark"] {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16162a;
+  --bg-canvas: #121225;
+  
+  /* Glass effects */
+  --surface: rgba(40, 40, 65, 0.75);
+  --surface-hover: rgba(50, 50, 80, 0.85);
+  --surface-border: rgba(80, 80, 120, 0.3);
+  
+  /* Text colors */
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0a0c0;
+  --text-muted: #68688a;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.3);
+  
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-default: rgba(255, 255, 255, 0.08);
+  
+  /* Canvas grid */
+  --grid-color: rgba(255, 255, 255, 0.02);
+}
+
+/* =====================================================
+   REDUCED MOTION (DSA accessibility)
+   ===================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

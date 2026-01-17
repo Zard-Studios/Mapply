@@ -1,0 +1,151 @@
+/**
+ * canvas.css – Infinite canvas styles
+ * Pan, zoom, and grid pattern
+ */
+
+/* =====================================================
+   CANVAS CONTAINER
+   ===================================================== */
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-canvas);
+
+    /* Subtle grid pattern */
+    background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: center center;
+
+    /* Cursor states */
+    cursor: grab;
+}
+
+.canvas-container.panning {
+    cursor: grabbing;
+}
+
+.canvas-container.connecting {
+    cursor: crosshair;
+}
+
+/* =====================================================
+   CONNECTIONS LAYER (SVG)
+   ===================================================== */
+.connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: var(--z-connections);
+    pointer-events: none;
+    overflow: visible;
+}
+
+/* =====================================================
+   NODES LAYER
+   ===================================================== */
+.nodes-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: var(--z-nodes);
+    transform-origin: 0 0;
+    /* Transform applied via JS for pan/zoom */
+}
+
+/* =====================================================
+   CONNECTION PATHS
+   ===================================================== */
+.connection-path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: stroke;
+    transition: stroke-width var(--transition-fast);
+}
+
+.connection-path:hover {
+    stroke-width: 4;
+}
+
+.connection-path.highlighted {
+    stroke-width: 3;
+    stroke: var(--accent-secondary);
+    filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Temporary connection while creating */
+.connection-temp {
+    stroke-dasharray: 8 4;
+    opacity: 0.6;
+}
+
+/* =====================================================
+   SELECTION BOX
+   ===================================================== */
+.selection-box {
+    position: absolute;
+    border: 2px dashed var(--accent);
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    z-index: var(--z-floating);
+}
+
+/* =====================================================
+   CANVAS EMPTY STATE
+   ===================================================== */
+.canvas-empty {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.canvas-empty-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+}
+
+.canvas-empty-text {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs);
+}
+
+.canvas-empty-hint {
+    font-size: var(--font-size-sm);
+}
+
+/* =====================================================
+   MINIMAP (future feature)
+   ===================================================== */
+.minimap {
+    position: absolute;
+    bottom: var(--spacing-lg);
+    right: calc(var(--spacing-lg) + 70px);
+    width: 150px;
+    height: 100px;
+    background: var(--surface);
+    backdrop-filter: blur(var(--blur-md));
+    -webkit-backdrop-filter: blur(var(--blur-md));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: var(--z-floating);
+    overflow: hidden;
+    display: none;
+    /* Hidden by default */
+}
