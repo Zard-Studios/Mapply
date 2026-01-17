@@ -85,7 +85,7 @@
    NODE CONTENT – 18pt default
    ===================================================== */
 .node-content {
-    font-size: 18px;
+    font-size: 18pt;
     /* default */
     color: var(--text-primary);
     line-height: 1.5;

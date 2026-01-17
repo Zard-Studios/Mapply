@@ -526,32 +526,38 @@ function updateToolbarState(toolbar, contentEl) {
         if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
 
         if (container && contentEl.contains(container)) {
+            const computedStyle = window.getComputedStyle(container);
+
             // FONT SIZE: Climb up looking for explicit 'pt'
             let sizePt = 0;
             let currentNode = container;
             while (currentNode && contentEl.contains(currentNode)) {
-                const inlineSize = currentNode.style?.fontSize;
-                if (inlineSize && inlineSize.endsWith('pt')) {
-                    sizePt = parseInt(inlineSize);
-                    break;
+                if (currentNode.nodeType === Node.ELEMENT_NODE) {
+                    const inlineSize = currentNode.style?.fontSize;
+                    if (inlineSize && inlineSize.endsWith('pt')) {
+                        sizePt = parseInt(inlineSize);
+                        break;
+                    }
                 }
                 currentNode = currentNode.parentElement;
             }
 
-            // Fallback to computed px -> pt 0.75 ratio
+            // Fallback to computed px -> pt (1px = 0.75pt)
             if (sizePt === 0) {
-                const style = window.getComputedStyle(container);
-                const px = parseFloat(style.fontSize);
+                const px = parseFloat(computedStyle.fontSize);
                 sizePt = Math.round(px * 0.75);
             }
 
             const fontInput = toolbar.querySelector('.font-size-input');
             if (fontInput && !isNaN(sizePt) && sizePt > 0) {
-                fontInput.value = sizePt;
+                // Only update if not currently focused to avoid fighting the user
+                if (document.activeElement !== fontInput) {
+                    fontInput.value = sizePt;
+                }
             }
 
-            // ALIGNMENT
-            const currentAlign = style.textAlign;
+            // ALIGNMENT from computed style
+            const currentAlign = computedStyle.textAlign;
             toolbar.querySelector('[data-action="align-left"]')?.classList.toggle('active', currentAlign === 'left' || currentAlign === 'start');
             toolbar.querySelector('[data-action="align-center"]')?.classList.toggle('active', currentAlign === 'center');
             toolbar.querySelector('[data-action="align-right"]')?.classList.toggle('active', currentAlign === 'right' || currentAlign === 'end');
