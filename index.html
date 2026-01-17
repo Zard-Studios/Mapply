@@ -42,6 +42,23 @@
         <span class="light light-maximize"></span>
       </div>
 
+      <!-- History Actions (Left) -->
+      <div class="history-actions" style="margin-left: 12px; display: flex; gap: 4px;">
+        <button id="btn-undo" class="btn-icon" aria-label="Annulla" title="Annulla (Cmd+Z)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6" />
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+          </svg>
+        </button>
+
+        <button id="btn-redo" class="btn-icon" aria-label="Ripristina" title="Ripristina (Cmd+Shift+Z)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 7v6h-6" />
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+          </svg>
+        </button>
+      </div>
+
       <!-- Map title (editable) -->
       <div class="title-container">
         <h1 id="map-title" class="map-title" contenteditable="true" spellcheck="false">
@@ -62,19 +79,6 @@
           </svg>
         </button>
 
-        <button id="btn-undo" class="btn-icon" aria-label="Annulla" title="Annulla (Cmd+Z)">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 7v6h6" />
-            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-          </svg>
-        </button>
-
-        <button id="btn-redo" class="btn-icon" aria-label="Ripristina" title="Ripristina (Cmd+Shift+Z)">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 7v6h-6" />
-            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
-          </svg>
-        </button>
 
         <button id="btn-save" class="btn-icon" aria-label="Salva mappa" title="Salva">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
