@@ -1099,9 +1099,9 @@ export function startLassoSelection(e) {
     }
 
     // Create SVG for lasso line
-    const container = document.getElementById('canvas-container');
+    // Create SVG for lasso line
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.style.position = 'absolute';
+    svg.style.position = 'fixed';
     svg.style.top = '0';
     svg.style.left = '0';
     svg.style.width = '100%';
@@ -1117,7 +1117,7 @@ export function startLassoSelection(e) {
     path.setAttribute('d', `M ${e.clientX} ${e.clientY}`);
 
     svg.appendChild(path);
-    container.appendChild(svg);
+    document.body.appendChild(svg);
 
     const points = [{ x: e.clientX, y: e.clientY }];
 
@@ -1382,61 +1382,82 @@ function copySelection() {
 /**
  * Paste nodes from clipboard
  */
-function pasteSelection() {
-    if (clipboard.length === 0) return;
+/**
+ * Paste nodes from clipboard or System Text
+ */
+export async function pasteSelection() {
+    // 1. Internal Clipboard Paste
+    if (clipboard.length > 0) {
+        const idMapping = new Map(); // Old ID -> New ID
+        const newNodes = [];
+        const newConnections = [];
+        const offset = 30;
 
-    const idMapping = new Map(); // Old ID -> New ID
-    const newNodes = [];
-    const newConnections = [];
-
-    // Calculate center of copied group to paste near mouse or center screen?
-    // For simplicity: paste at slightly offset position from original (standard behavior)
-    // Or center of screen. Let's do offset +20px.
-    const offset = 30;
-
-    // 1. Create new nodes
-    clipboard.forEach(item => {
-        if (item.type === 'node') {
-            const original = item.data;
-            const newNode = createNode({
-                type: original.type,
-                content: original.content,
-                fontSize: original.fontSize,
-                x: original.x + offset,
-                y: original.y + offset
-            });
-            newNodes.push(newNode);
-            idMapping.set(original.id, newNode.id);
-        }
-    });
-
-    // 2. Create new connections
-    clipboard.forEach(item => {
-        if (item.type === 'conn') {
-            const conn = item.data;
-            if (idMapping.has(conn.from) && idMapping.has(conn.to)) {
-                newConnections.push(createConnection(
-                    idMapping.get(conn.from),
-                    idMapping.get(conn.to)
-                ));
+        // 1. Create new nodes
+        clipboard.forEach(item => {
+            if (item.type === 'node') {
+                const original = item.data;
+                const newNode = createNode({
+                    type: original.type,
+                    content: original.content,
+                    fontSize: original.fontSize,
+                    x: original.x + offset,
+                    y: original.y + offset
+                });
+                newNodes.push(newNode);
+                idMapping.set(original.id, newNode.id);
             }
+        });
+
+        // 2. Create new connections
+        clipboard.forEach(item => {
+            if (item.type === 'conn') {
+                const conn = item.data;
+                if (idMapping.has(conn.from) && idMapping.has(conn.to)) {
+                    newConnections.push(createConnection(
+                        idMapping.get(conn.from),
+                        idMapping.get(conn.to)
+                    ));
+                }
+            }
+        });
+
+        // 3. Apply changes (Batch)
+        currentMap.nodes.push(...newNodes);
+        currentMap.connections.push(...newConnections);
+
+        // 4. Render and Select
+        renderAllNodes(false); // No animation for bulk paste? Or true?
+        selectNode(null); // Clear
+        newNodes.forEach(n => addToSelection(n.id));
+
+        onNodeChange?.();
+        return;
+    }
+
+    // 2. System Clipboard (Text)
+    try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim().length > 0) {
+            import('./canvas.js').then(({ screenToCanvas }) => {
+                const { x, y } = screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);
+                const newNode = addNodeAtLocation(x - 80, y - 40);
+
+                // Sanitize basic text
+                const safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+                updateNodeField(newNode.id, 'content', safeText);
+
+                // Update UI immediately
+                const nodeEl = document.getElementById(newNode.id);
+                if (nodeEl) {
+                    const contentEl = nodeEl.querySelector('.node-content');
+                    if (contentEl) contentEl.innerHTML = safeText;
+                }
+            });
         }
-    });
-
-    // 3. Apply changes (Batch)
-    currentMap.nodes.push(...newNodes);
-    currentMap.connections.push(...newConnections);
-
-    // 4. Render and Select
-    newNodes.forEach(n => renderNode(n));
-
-    // Select the new copies
-    selectNode(null); // Clear
-    newNodes.forEach(n => addToSelection(n.id));
-
-    updateConnections(currentMap);
-    onNodeChange?.();
-    showToast('Incollato', 'info', 1000);
+    } catch (err) {
+        // Ignore
+    }
 }
 
 /**

@@ -28,6 +28,10 @@ const ZOOM_STEP = 0.1;
 // Callbacks
 let onTransformChange = null;
 
+// Double-tap Cmd state
+let lastCmdTime = 0;
+let lassoModeActive = false;
+
 /**
  * Initialize the canvas
  * @param {Object} options - Configuration options
@@ -70,6 +74,25 @@ function setupPanning() {
             canvasContainer.style.cursor = 'grab';
             e.preventDefault();
         }
+
+        // Detect Double-Tap Cmd/Ctrl for Lasso Mode
+        if (e.key === 'Meta' || e.key === 'Control') {
+            const now = Date.now();
+            if (now - lastCmdTime < 400) { // 400ms threshold
+                lassoModeActive = true;
+                canvasContainer.style.cursor = 'crosshair'; // Visual feedback
+                import('./ui.js').then(({ showToast }) => showToast('Lasso Mode: Disegna!', 'info', 2000));
+            }
+            lastCmdTime = now;
+        }
+    });
+
+    // Reset lasso mode if Esc is pressed
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lassoModeActive) {
+            lassoModeActive = false;
+            canvasContainer.style.cursor = '';
+        }
     });
 
     document.addEventListener('keyup', (e) => {
@@ -92,8 +115,11 @@ function setupPanning() {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.font-size-dropdown')) return;
 
-        // LASSO SELECTION: Ctrl/Cmd + Alt
-        if ((e.ctrlKey || e.metaKey) && e.altKey) {
+        // LASSO SELECTION: Double-tap Cmd OR Cmd/Ctrl + Alt
+        if (lassoModeActive || ((e.ctrlKey || e.metaKey) && e.altKey)) {
+            lassoModeActive = false; // Reset after one use
+            canvasContainer.style.cursor = '';
+
             import('./nodes.js').then(({ startLassoSelection }) => {
                 startLassoSelection(e);
             });
