@@ -607,10 +607,13 @@ function updateToolbarState(toolbar, contentEl) {
         if (container && (contentEl.contains(container) || container === contentEl)) {
             const computedStyle = window.getComputedStyle(container);
 
-            // FONT SIZE: Climb up looking for explicit 'pt'
+            // FONT SIZE: Climb up looking for literal 'pt' or 'px' in STYLE attribute (inline)
+            // This prioritizes what the user explicitly set over computed/inherited values
             let sizePt = 0;
             let currentNode = container;
-            while (currentNode && contentEl.contains(currentNode)) {
+
+            // Check up to contentEl (inclusive if it's an element)
+            while (currentNode) {
                 if (currentNode.nodeType === Node.ELEMENT_NODE) {
                     const inlineSize = currentNode.style?.fontSize;
                     if (inlineSize && inlineSize.endsWith('pt')) {
@@ -618,6 +621,7 @@ function updateToolbarState(toolbar, contentEl) {
                         break;
                     }
                 }
+                if (currentNode === contentEl) break;
                 currentNode = currentNode.parentElement;
             }
 
