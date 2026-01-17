@@ -67,6 +67,9 @@ function setupAIPanel() {
     const inputPrompt = document.getElementById('ai-prompt');
     const messagesContainer = document.getElementById('ai-messages');
 
+    // Message history for context
+    let messageHistory = [];
+
     // Toggle Panel
     btnToggle.addEventListener('click', () => {
         panel.classList.toggle('visible');
@@ -90,8 +93,10 @@ function setupAIPanel() {
         const text = inputPrompt.value.trim();
         if (!text) return;
 
-        // Add User Message
+        // Add User Message to UI and history
         appendMessage('user', text);
+        messageHistory.push({ role: 'user', content: text });
+
         inputPrompt.value = '';
         inputPrompt.style.height = 'auto';
 
@@ -99,10 +104,24 @@ function setupAIPanel() {
         const loadingId = appendMessage('system', 'Sto pensando...', true);
 
         try {
-            // Call AI Service
-            const response = await aiService.generateCompletion([
-                { role: 'user', content: text }
-            ]);
+            // Get current map context
+            const mapContext = await getCurrentMapContext();
+
+            // Build messages with context
+            const messagesWithContext = [...messageHistory];
+            if (mapContext) {
+                // Add map context as a system message at the start
+                messagesWithContext.unshift({
+                    role: 'system',
+                    content: `MAPPA ATTUALE dell'utente:\n${mapContext}\n\nL'utente può chiederti di AGGIUNGERE nodi alla mappa esistente, ESPANDERE un argomento, o creare una nuova mappa.`
+                });
+            }
+
+            // Call AI Service with full history
+            const response = await aiService.generateCompletion(messagesWithContext);
+
+            // Add AI response to history
+            messageHistory.push({ role: 'assistant', content: response });
 
             // Try to parse JSON from response
             const mapData = extractMapJSON(response);
@@ -156,6 +175,33 @@ function updateMessage(id, text, isError = false) {
 function formatText(text) {
     // Basic newline to br
     return text.replace(/\n/g, '<br>');
+}
+
+/**
+ * Get current map context for AI
+ * Returns a text summary of existing nodes
+ */
+async function getCurrentMapContext() {
+    try {
+        const { getCurrentMap } = await import('../app.js');
+        const map = getCurrentMap();
+
+        if (!map || !map.nodes || map.nodes.length === 0) {
+            return null;
+        }
+
+        // Create a simple text summary of nodes
+        const nodeList = map.nodes.map(node => {
+            const type = node.type || 'child';
+            const content = node.content?.substring(0, 100) || '(vuoto)';
+            return `- [${type}] "${content}"`;
+        }).join('\n');
+
+        return `La mappa contiene ${map.nodes.length} nodi:\n${nodeList}`;
+    } catch (e) {
+        console.warn('Could not get map context:', e);
+        return null;
+    }
 }
 
 /**
