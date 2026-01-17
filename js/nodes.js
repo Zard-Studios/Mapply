@@ -595,30 +595,46 @@ function updateToolbarState(toolbar, contentEl) {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        let container = range.startContainer;
-        if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
+        // ELEMENT NODE SELECTION Strategy:
+        // If startContainer is an element (e.g. contentEl), the selection starts at a specific child index.
+        // We must look at that child node to find the style, not the container itself.
+        if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
+            // Get the node implied by the offset
+            const offset = range.startOffset;
+            const children = range.startContainer.childNodes;
 
-        // CRITICAL FIX: If selection is collapsed (cursor only), startContainer might be misleading 
-        // if we are at the edge. Let's prefer anchorNode's parent if valid.
+            if (offset < children.length) {
+                // If selection starts at child 0, target is children[0]
+                const targetNode = children[offset];
+                if (targetNode.nodeType === Node.ELEMENT_NODE) {
+                    container = targetNode;
+                } else if (targetNode.nodeType === Node.TEXT_NODE) {
+                    container = targetNode.parentElement;
+                }
+            } else if (children.length > 0) {
+                // If offset is at end, check the last child
+                const targetNode = children[children.length - 1];
+                if (targetNode.nodeType === Node.ELEMENT_NODE) {
+                    container = targetNode;
+                } else if (targetNode.nodeType === Node.TEXT_NODE) {
+                    container = targetNode.parentElement;
+                }
+            }
+        } else {
+            // TEXT NODE Strategy:
+            // Standard parentElement check
+            container = range.startContainer.parentElement;
+        }
+
+        // --- Edge Case Handling ---
+
+        // 1. Collapsed selection (cursor) prioritization
         if (selection.isCollapsed && selection.anchorNode) {
             let anchorParent = selection.anchorNode;
             if (anchorParent.nodeType === Node.TEXT_NODE) anchorParent = anchorParent.parentElement;
             if (contentEl.contains(anchorParent)) {
                 container = anchorParent;
             }
-        }
-
-        // If we fell out of contentEl, snap back
-        if (!contentEl.contains(container) && container !== contentEl) {
-            container = contentEl;
-        }
-
-        // SPECIAL CASE: If we selected the whole node (container === contentEl),
-        // we might be missing the style that lives on the child span.
-        // Let's check if there's a direct child that might hold the style.
-        if (container === contentEl && contentEl.firstElementChild) {
-            // Use the first element child as the source of truth if available
-            container = contentEl.firstElementChild;
         }
 
         if (container && (contentEl.contains(container) || container === contentEl)) {
