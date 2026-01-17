@@ -26,6 +26,7 @@ import {
     renderMapList
 } from './ui.js';
 import { isAIEnabled, generateMapFromText } from './aiAdapter.js';
+import { history } from './history.js';
 
 // Current map state
 let currentMap = null;
@@ -42,7 +43,12 @@ async function init() {
         // Initialize UI components
         initUI();
         initConnections({
-            onConnectionDelete: () => scheduleAutoSave()
+            onConnectionDelete: () => {
+                // Connection deletion usually happens via direct manipulation
+                // We must save state immediately
+                if (currentMap) history.push(currentMap);
+                scheduleAutoSave();
+            }
         });
 
         // Initialize canvas with transform callback
@@ -63,6 +69,7 @@ async function init() {
 
         // Setup event listeners
         setupEventListeners();
+        setupHistoryControls();
 
         // Register service worker for offline support
         registerServiceWorker();
@@ -119,8 +126,14 @@ function setActiveMap(map) {
 
     // Initialize nodes with map data
     initNodes(map, {
-        onNodeChange: () => scheduleAutoSave()
+        onNodeChange: () => {
+            history.push(currentMap);
+            scheduleAutoSave();
+        }
     });
+
+    // Initialize History
+    history.clear(map);
 
     // Render connections
     updateConnections(map);
@@ -334,3 +347,74 @@ function registerServiceWorker() {
 
 // Start the application
 init();
+
+/**
+ * Setup History Controls (Keyboard + Buttons)
+ */
+function setupHistoryControls() {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Undo: Ctrl+Z (Windows) or Cmd+Z (Mac)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            performUndo();
+        }
+        
+        // Redo: Ctrl+Shift+Z (Mac/Win) or Ctrl+Y (Win standard)
+        if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) || 
+            ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+            e.preventDefault();
+            performRedo();
+        }
+    });
+
+    // Add explicit listeners for Undo/Redo buttons
+    document.getElementById('btn-undo')?.addEventListener('click', performUndo);
+    document.getElementById('btn-redo')?.addEventListener('click', performRedo);
+}
+
+/**
+ * Perform Undo Action
+ */
+function performUndo() {
+    const prevState = history.undo();
+    if (prevState) {
+        currentMap = prevState;
+        // Propagate state to modules
+        setCurrentMap(currentMap);
+        
+        // Refresh UI
+        renderAllNodes();
+        updateConnections(currentMap);
+        
+        // Update other UI elements
+        setMapTitle(currentMap.title);
+        setLastMapId(currentMap.id);
+        
+        scheduleAutoSave();
+        showToast('Annulla', 'info');
+    }
+}
+
+/**
+ * Perform Redo Action
+ */
+function performRedo() {
+    const nextState = history.redo();
+    if (nextState) {
+        currentMap = nextState;
+        // Propagate state to modules
+        setCurrentMap(currentMap);
+        
+        // Refresh UI
+        renderAllNodes();
+        updateConnections(currentMap);
+        
+        // Update other UI elements
+        setMapTitle(currentMap.title);
+        setLastMapId(currentMap.id);
+        
+        scheduleAutoSave();
+        showToast('Ripristina', 'info');
+    }
+}
