@@ -686,17 +686,11 @@ function updateToolbarState(toolbar, contentEl) {
                 // Only check for mixed sizes if we have a range selection (not just cursor)
                 if (!selection.isCollapsed) {
                     const range = selection.getRangeAt(0);
-                    // Create a walker to check every text node in the selection
+                    // Create a walker to check every text node under the common ancestor
                     const walker = document.createTreeWalker(
                         range.commonAncestorContainer,
                         NodeFilter.SHOW_TEXT,
-                        {
-                            acceptNode: (node) => {
-                                // Only accept nodes that are at least partially selected
-                                if (selection.containsNode(node, true)) return NodeFilter.FILTER_ACCEPT;
-                                return NodeFilter.FILTER_REJECT;
-                            }
-                        }
+                        null
                     );
 
                     let firstSize = null;
@@ -704,32 +698,34 @@ function updateToolbarState(toolbar, contentEl) {
                     let currentNode = walker.nextNode();
 
                     while (currentNode) {
-                        // Determine size for this specific text node
-                        let nodeSize = 0;
-                        let parent = currentNode.parentElement;
+                        // Manual intersection check using the range
+                        if (range.intersectsNode(currentNode)) {
+                            // Determine size for this specific text node
+                            let nodeSize = 0;
+                            let parent = currentNode.parentElement;
 
-                        // Check inline styles up to contentEl
-                        let tempParent = parent;
-                        while (tempParent && contentEl.contains(tempParent)) {
-                            if (tempParent.style?.fontSize?.endsWith('pt')) {
-                                nodeSize = parseInt(tempParent.style.fontSize);
-                                break;
+                            // Check inline styles up to contentEl
+                            let tempParent = parent;
+                            while (tempParent && contentEl.contains(tempParent)) {
+                                if (tempParent.style?.fontSize?.endsWith('pt')) {
+                                    nodeSize = parseInt(tempParent.style.fontSize);
+                                    break;
+                                }
+                                if (tempParent === contentEl) break;
+                                tempParent = tempParent.parentElement;
                             }
-                            if (tempParent === contentEl) break;
-                            tempParent = tempParent.parentElement;
-                        }
 
-                        // Fallback to computed
-                        if (nodeSize === 0) {
-                            const px = parseFloat(window.getComputedStyle(parent).fontSize);
-                            nodeSize = Math.round(px * 0.75);
-                        }
+                            // Fallback to computed
+                            if (nodeSize === 0) {
+                                const px = parseFloat(window.getComputedStyle(parent).fontSize);
+                                nodeSize = Math.round(px * 0.75);
+                            }
 
-                        if (firstSize === null) {
-                            firstSize = nodeSize;
-                        } else if (firstSize !== nodeSize) {
-                            isMixed = true;
-                            break;
+                            if (firstSize === null) {
+                                firstSize = nodeSize;
+                            } else if (firstSize !== nodeSize) {
+                                isMixed = true;
+                            }
                         }
                         currentNode = walker.nextNode();
                     }
