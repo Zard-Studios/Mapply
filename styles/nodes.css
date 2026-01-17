@@ -28,7 +28,7 @@
 
     /* Interaction */
     cursor: grab;
-    /* user-select handled by node-content */
+    user-select: none;
     transition:
         transform var(--transition-fast),
         box-shadow var(--transition-fast),
@@ -94,6 +94,11 @@
     width: 100%;
     min-height: 1.5em;
     word-wrap: break-word;
+    user-select: none;
+}
+
+.node-content[contenteditable="true"] {
+    user-select: text;
 }
 
 .node-content:focus {
