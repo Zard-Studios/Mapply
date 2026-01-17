@@ -39,7 +39,7 @@ export function initNodes(map, options = {}) {
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
             hideAllToolbars();
-            if (selectedNodeId && !e.target.closest('.connection-path')) {
+            if ((selectedNodeId || selectedNodeIds.size > 0) && !e.target.closest('.connection-path')) {
                 // If not holding shift/cmd, clear selection
                 if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
                     selectNode(null);
