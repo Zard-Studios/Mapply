@@ -14,6 +14,7 @@ let selectedNodeIds = new Set(); // Multi-selection set
 let dragState = null;
 let activeToolbar = null; // Track which toolbar is visible
 let phantomNode = null;
+let clipboard = []; // To store copied nodes/connections
 
 // Callbacks
 let onNodeChange = null;
@@ -56,6 +57,20 @@ export function initNodes(map, options = {}) {
                 e.preventDefault();
                 deleteSelectedNodes();
             }
+        }
+
+        // Copy (Cmd/Ctrl + C)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+            if (isEditing) return;
+            e.preventDefault();
+            copySelection();
+        }
+
+        // Paste (Cmd/Ctrl + V)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+            if (isEditing) return;
+            e.preventDefault();
+            pasteSelection();
         }
 
         if (e.key === 'Enter' && selectedNodeId && !isEditing) {
@@ -1221,7 +1236,11 @@ function startConnection(fromNodeId) {
                 const { x, y } = screenToCanvas(e.clientX, e.clientY);
                 // Center node on mouse (roughly 160x80)
                 const newNode = addNodeAtLocation(x - 80, y - 40);
-                createNodeConnection(fromNodeId, newNode.id);
+
+                // Allow DOM to update before drawing connection to ensure correct endpoint
+                requestAnimationFrame(() => {
+                    createNodeConnection(fromNodeId, newNode.id);
+                });
             }
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
@@ -1242,6 +1261,93 @@ function createNodeConnection(fromId, toId) {
     currentMap.connections.push(connection);
     updateConnections(currentMap);
     onNodeChange?.();
+}
+
+/**
+ * Copy selected nodes to clipboard
+ */
+function copySelection() {
+    if (selectedNodeIds.size === 0) return;
+
+    clipboard = [];
+    const idMapping = new Map();
+
+    // 1. Copy nodes
+    selectedNodeIds.forEach(id => {
+        const node = currentMap.nodes.find(n => n.id === id);
+        if (node) {
+            clipboard.push({ type: 'node', data: { ...node } }); // Deep-ish copy
+        }
+    });
+
+    // 2. Copy connections BETWEEN selected nodes
+    currentMap.connections.forEach(conn => {
+        if (selectedNodeIds.has(conn.from) && selectedNodeIds.has(conn.to)) {
+            clipboard.push({ type: 'conn', data: { ...conn } });
+        }
+    });
+
+    showToast('Copiato', 'info', 1000);
+}
+
+/**
+ * Paste nodes from clipboard
+ */
+function pasteSelection() {
+    if (clipboard.length === 0) return;
+
+    const idMapping = new Map(); // Old ID -> New ID
+    const newNodes = [];
+    const newConnections = [];
+
+    // Calculate center of copied group to paste near mouse or center screen?
+    // For simplicity: paste at slightly offset position from original (standard behavior)
+    // Or center of screen. Let's do offset +20px.
+    const offset = 30;
+
+    // 1. Create new nodes
+    clipboard.forEach(item => {
+        if (item.type === 'node') {
+            const original = item.data;
+            const newNode = createNode({
+                type: original.type,
+                content: original.content,
+                fontSize: original.fontSize,
+                x: original.x + offset,
+                y: original.y + offset
+            });
+            newNodes.push(newNode);
+            idMapping.set(original.id, newNode.id);
+        }
+    });
+
+    // 2. Create new connections
+    clipboard.forEach(item => {
+        if (item.type === 'conn') {
+            const conn = item.data;
+            if (idMapping.has(conn.from) && idMapping.has(conn.to)) {
+                newConnections.push(createConnection(
+                    idMapping.get(conn.from),
+                    idMapping.get(conn.to)
+                ));
+            }
+        }
+    });
+
+    // 3. Apply changes (Batch)
+    currentMap.nodes.push(...newNodes);
+    currentMap.connections.push(...newConnections);
+
+    // 4. Render and Select
+    newNodes.forEach(n => renderNode(n));
+
+    // Select the new copies
+    selectNode(null); // Clear
+    newNodes.forEach(n => addToSelection(n.id));
+
+    updateConnections(currentMap);
+    onNodeChange?.();
+    showToast('Incollato', 'info', 1000);
 }
 
 /**
