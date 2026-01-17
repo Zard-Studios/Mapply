@@ -359,9 +359,17 @@ function enterEditMode(contentEl, toolbar) {
  * Show toolbar with playful animation
  */
 function showToolbar(toolbar) {
-    hideAllToolbars();
+    const node = toolbar.closest('.node');
+    hideAllToolbars(node); // Keep this node active!
+
     toolbar.dataset.visible = 'true';
     activeToolbar = toolbar;
+
+    // Also update toolbar state immediately to reflect current selection
+    const contentEl = node?.querySelector('.node-content');
+    if (contentEl) {
+        updateToolbarState(toolbar, contentEl);
+    }
 }
 
 /**
@@ -380,12 +388,20 @@ function hideToolbar(toolbar) {
 /**
  * Hide all toolbars AND disable editing
  */
-function hideAllToolbars() {
+/**
+ * Hide all toolbars AND disable editing (except for excluded node)
+ * @param {HTMLElement} [excludeNode] - Node to keep active
+ */
+function hideAllToolbars(excludeNode = null) {
     document.querySelectorAll('.node-toolbar[data-visible="true"]').forEach(t => {
+        const node = t.closest('.node');
+
+        // Skip if this is the node we want to keep active
+        if (excludeNode && node === excludeNode) return;
+
         t.dataset.visible = 'false';
 
-        // Find associated content element and disable editing
-        const node = t.closest('.node');
+        // Disable editing for this node
         if (node) {
             const content = node.querySelector('.node-content');
             if (content) content.setAttribute('contenteditable', 'false');
@@ -393,15 +409,22 @@ function hideAllToolbars() {
     });
 
     document.querySelectorAll('.font-size-dropdown[data-visible="true"]').forEach(d => {
+        // Checking if dropdown belongs to excluded node would be good too
+        // For now, simpler to just hide all dropdowns as they auto-close
         d.dataset.visible = 'false';
     });
 
-    // Safety check: ensure no contenteditable remains
+    // Safety check check: disable editing on other nodes (but NOT the excluded one)
     document.querySelectorAll('.node-content[contenteditable="true"]').forEach(el => {
+        const node = el.closest('.node');
+        if (excludeNode && node === excludeNode) return;
+
         el.setAttribute('contenteditable', 'false');
     });
 
-    activeToolbar = null;
+    if (!excludeNode) {
+        activeToolbar = null;
+    }
 }
 
 /**
