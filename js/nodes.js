@@ -116,6 +116,7 @@ function renderNode(nodeData) {
     node.style.top = `${nodeData.y}px`;
 
     const fontSize = nodeData.fontSize || DEFAULT_FONT_SIZE;
+    const textAlign = nodeData.textAlign || 'center';
 
     node.innerHTML = `
     <div class="node-toolbar" data-visible="false">
@@ -129,6 +130,16 @@ function renderNode(nodeData) {
         <span class="toolbar-label underline">U</span>
       </button>
       <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" data-action="align-left" aria-label="Allinea a sinistra" title="Allinea a sinistra">
+        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+      </button>
+      <button class="toolbar-btn" data-action="align-center" aria-label="Allinea al centro" title="Allinea al centro">
+        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
+      </button>
+      <button class="toolbar-btn" data-action="align-right" aria-label="Allinea a destra" title="Allinea a destra">
+        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+      </button>
+      <div class="toolbar-divider"></div>
       <div class="font-size-control">
         <input type="number" class="font-size-input" value="${fontSize}" min="8" max="72" title="Digita dimensione">
         <span class="font-size-unit">pt</span>
@@ -140,7 +151,7 @@ function renderNode(nodeData) {
         </svg>
       </button>
     </div>
-    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}px;">${nodeData.content || ''}</div>
+    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}px; text-align: ${textAlign};">${nodeData.content || ''}</div>
     <div class="node-handle node-handle-top" data-handle="top"></div>
     <div class="node-handle node-handle-bottom" data-handle="bottom"></div>
     <div class="node-handle node-handle-left" data-handle="left"></div>
@@ -217,6 +228,21 @@ function setupNodeEvents(nodeEl, nodeData) {
 
                 // Ensure changes are saved
                 updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+            } else if (action.startsWith('align-')) {
+                const alignment = action.replace('align-', '');
+                // Handle selection pre-selection
+                const highlight = contentEl.querySelector('.temp-selection-highlight');
+                if (highlight) {
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(highlight);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+
+                setNodeAlignment(nodeEl, nodeData, alignment);
+                updateToolbarState(toolbar, contentEl);
+                contentEl.focus();
             } else if (action === 'delete') {
                 deleteNode(nodeData.id);
             }
@@ -440,6 +466,57 @@ function setNodeFontSize(nodeEl, nodeData, size) {
 }
 
 /**
+ * Set text alignment
+ */
+function setNodeAlignment(nodeEl, nodeData, alignment) {
+    const contentEl = nodeEl.querySelector('.node-content');
+
+    // 1. Check for visual highlight (fake selection)
+    const highlight = contentEl.querySelector('.temp-selection-highlight');
+    if (highlight) {
+        highlight.style.display = 'block';
+        highlight.style.textAlign = alignment;
+        highlight.classList.remove('temp-selection-highlight');
+        updateConnections(currentMap);
+        updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+        return;
+    }
+
+    // 2. Fallback to real selection
+    const selection = window.getSelection();
+    let hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed && contentEl.contains(selection.anchorNode);
+
+    if (hasSelection) {
+        const range = selection.getRangeAt(0);
+        if (contentEl.contains(range.commonAncestorContainer) || range.commonAncestorContainer === contentEl) {
+            const div = document.createElement('div');
+            div.style.textAlign = alignment;
+            try {
+                const fragment = range.extractContents();
+                div.appendChild(fragment);
+                range.insertNode(div);
+
+                selection.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(div);
+                selection.addRange(newRange);
+
+                updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+                updateConnections(currentMap);
+                return;
+            } catch (e) {
+                console.error('Alignment error', e);
+            }
+        }
+    }
+
+    // 3. No selection = apply to entire node
+    contentEl.style.textAlign = alignment;
+    updateNodeField(nodeData.id, 'textAlign', alignment);
+    updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+}
+
+/**
  * Apply style
  */
 function applyTextStyle(style) {
@@ -459,7 +536,25 @@ function updateToolbarState(toolbar, contentEl) {
     toolbar.querySelector('[data-action="italic"]')?.classList.toggle('active', isItalic);
     toolbar.querySelector('[data-action="underline"]')?.classList.toggle('active', isUnderline);
 
+    // Update alignment states
+    const alignment = document.queryCommandValue('justifyLeft') === 'true' ? 'left' :
+        document.queryCommandValue('justifyCenter') === 'true' ? 'center' :
+            document.queryCommandValue('justifyRight') === 'true' ? 'right' : '';
+
+    // If queryCommandValue fails or we want more precision from the element itself
     const selection = window.getSelection();
+    let currentAlign = alignment;
+    if (selection.rangeCount > 0) {
+        let container = selection.getRangeAt(0).commonAncestorContainer;
+        if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
+        const style = window.getComputedStyle(container);
+        currentAlign = style.textAlign;
+    }
+
+    toolbar.querySelector('[data-action="align-left"]')?.classList.toggle('active', currentAlign === 'left' || currentAlign === 'start');
+    toolbar.querySelector('[data-action="align-center"]')?.classList.toggle('active', currentAlign === 'center');
+    toolbar.querySelector('[data-action="align-right"]')?.classList.toggle('active', currentAlign === 'right' || currentAlign === 'end');
+
     if (selection.rangeCount > 0 && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
         let container = range.commonAncestorContainer;
