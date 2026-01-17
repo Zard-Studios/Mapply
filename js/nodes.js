@@ -485,27 +485,33 @@ function updateNodeField(nodeId, field, value) {
 }
 
 /**
- * Start creating a connection
+ * Start creating a connection with live preview
  */
 function startConnection(fromNodeId) {
     const container = document.getElementById('canvas-container');
     container.classList.add('connecting');
 
-    const onMouseUp = (e) => {
-        container.classList.remove('connecting');
+    // Import and start preview
+    import('./connections.js').then(({ startConnectionPreview, endConnectionPreview }) => {
+        startConnectionPreview(fromNodeId);
 
-        const target = e.target.closest('.node-handle');
-        if (target) {
-            const toNodeEl = target.closest('.node');
-            if (toNodeEl && toNodeEl.id !== fromNodeId) {
-                createNodeConnection(fromNodeId, toNodeEl.id);
+        const onMouseUp = (e) => {
+            container.classList.remove('connecting');
+            endConnectionPreview();
+
+            const target = e.target.closest('.node-handle') || e.target.closest('.node');
+            if (target) {
+                const toNodeEl = target.closest('.node');
+                if (toNodeEl && toNodeEl.id !== fromNodeId) {
+                    createNodeConnection(fromNodeId, toNodeEl.id);
+                }
             }
-        }
 
-        document.removeEventListener('mouseup', onMouseUp);
-    };
+            document.removeEventListener('mouseup', onMouseUp);
+        };
 
-    document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 }
 
 /**

@@ -18,6 +18,7 @@ let offsetY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+let isSpacePressed = false; // Spacebar held = pan mode
 
 // Zoom limits
 const MIN_ZOOM = 0.25;
@@ -59,10 +60,39 @@ export function initCanvas(options = {}) {
  * Setup panning with mouse and touch
  */
 function setupPanning() {
-    // Mouse panning (middle button or spacebar + drag)
+    // Spacebar key handlers for pan mode (like Figma)
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !e.repeat && !isEditingText()) {
+            isSpacePressed = true;
+            canvasContainer.style.cursor = 'grab';
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+            isSpacePressed = false;
+            canvasContainer.style.cursor = '';
+        }
+    });
+
+    // Mouse panning
     canvasContainer.addEventListener('mousedown', (e) => {
-        // Middle mouse button or left button on canvas background
-        if (e.button === 1 || (e.button === 0 && e.target === canvasContainer)) {
+        // Middle mouse button works ANYWHERE
+        if (e.button === 1) {
+            startPan(e.clientX, e.clientY);
+            e.preventDefault();
+            return;
+        }
+        // Left button with spacebar = pan anywhere (Figma style)
+        if (e.button === 0 && isSpacePressed) {
+            startPan(e.clientX, e.clientY);
+            canvasContainer.style.cursor = 'grabbing';
+            e.preventDefault();
+            return;
+        }
+        // Left button only on canvas background (not on nodes)
+        if (e.button === 0 && e.target === canvasContainer) {
             startPan(e.clientX, e.clientY);
             e.preventDefault();
         }
@@ -76,6 +106,9 @@ function setupPanning() {
 
     document.addEventListener('mouseup', () => {
         endPan();
+        if (isSpacePressed) {
+            canvasContainer.style.cursor = 'grab';
+        }
     });
 
     // Touch panning (two-finger)
@@ -114,6 +147,14 @@ function setupPanning() {
     canvasContainer.addEventListener('touchend', () => {
         endPan();
     });
+}
+
+/**
+ * Check if user is editing text (don't trigger spacebar pan)
+ */
+function isEditingText() {
+    const el = document.activeElement;
+    return el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
 }
 
 /**

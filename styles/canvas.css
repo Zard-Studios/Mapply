@@ -87,25 +87,36 @@
     stroke-width: 2px;
     stroke-linecap: round;
     pointer-events: stroke;
-    transition: stroke-width var(--transition-fast);
-    vector-effect: non-scaling-stroke;
-    /* Keep stroke width constant on zoom */
+    /* Clickable on the stroke */
+    cursor: pointer;
+    transition: stroke-width 0.15s ease, stroke 0.15s ease;
 }
 
 .connection-path:hover {
-    stroke-width: 4;
+    stroke-width: 4px;
+    stroke: var(--error, #ef4444);
 }
 
 .connection-path.highlighted {
-    stroke-width: 3;
+    stroke-width: 3px;
     stroke: var(--accent-secondary);
     filter: drop-shadow(0 0 6px var(--accent));
 }
 
-/* Temporary connection while creating */
-.connection-temp {
+/* Live preview connection while dragging */
+.connection-path.preview {
+    stroke: var(--accent);
+    stroke-width: 2px;
     stroke-dasharray: 8 4;
-    opacity: 0.6;
+    opacity: 0.7;
+    pointer-events: none;
+    animation: dash-move 0.5s linear infinite;
+}
+
+@keyframes dash-move {
+    to {
+        stroke-dashoffset: -12;
+    }
 }
 
 /* =====================================================

@@ -41,7 +41,9 @@ async function init() {
 
         // Initialize UI components
         initUI();
-        initConnections();
+        initConnections({
+            onConnectionDelete: () => scheduleAutoSave()
+        });
 
         // Initialize canvas with transform callback
         initCanvas({
