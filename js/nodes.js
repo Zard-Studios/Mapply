@@ -446,6 +446,11 @@ function enterEditMode(contentEl, toolbar) {
     selection.removeAllRanges();
     selection.addRange(range);
     showToolbar(toolbar);
+
+    // Force connection update in case layout shifted (e.g. outline or toolbar)
+    requestAnimationFrame(() => {
+        updateConnections(currentMap);
+    });
 }
 
 /**
