@@ -104,6 +104,21 @@
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
         </button>
+
+        <button id="btn-settings" class="sidebar-btn" title="Impostazioni" data-tooltip="Impostazioni">
+          <svg viewBox="0 0 24 24" fill="none" class="icon" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+        </button>
+        <button id="btn-ai-toggle" class="sidebar-btn" title="AI Assistant" data-tooltip="AI Assistant">
+          <svg viewBox="0 0 24 24" fill="none" class="icon" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -308,6 +323,74 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Impostazioni</h3>
+        <button class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label for="ai-api-key">OpenRouter API Key</label>
+          <div class="input-wrapper">
+            <input type="password" id="ai-api-key" placeholder="sk-or-..." />
+            <button id="btn-toggle-visibility" class="btn-icon-small">👁️</button>
+          </div>
+          <p class="help-text">Ottieni una key su <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></p>
+        </div>
+        <div class="setting-group">
+          <label for="ai-model">Modello AI Predeterminato</label>
+          <select id="ai-model">
+            <option value="google/gemini-flash-1.5">Google Gemini Flash 1.5 (Veloce/Economico)</option>
+            <option value="google/gemini-pro-1.5">Google Gemini Pro 1.5 (Bilanciato)</option>
+            <option value="openai/gpt-4o">OpenAI GPT-4o (Potente)</option>
+            <option value="anthropic/claude-3.5-sonnet">Anthropic Claude 3.5 Sonnet (Creativo)</option>
+            <option value="meta-llama/llama-3-8b-instruct">Llama 3 8B (Free)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-settings" class="btn-primary">Salva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Panel -->
+  <div id="ai-panel" class="ai-panel">
+    <div class="ai-header">
+      <h3>✨ AI Assistant</h3>
+      <button id="btn-close-ai" class="btn-icon">&times;</button>
+    </div>
+    <div id="ai-messages" class="ai-messages">
+      <div class="ai-message system">
+        Ciao! Sono il tuo assistente. <br>
+        Chiedimi di creare una mappa, o trascina un PDF/Immagine qui per analizzarlo!
+      </div>
+    </div>
+    <div class="ai-input-area">
+      <div id="drop-zone" class="drop-zone hidden">
+        <div class="drop-content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>Rilascia file qui</span>
+        </div>
+      </div>
+      <div class="input-row">
+        <textarea id="ai-prompt" placeholder="Descrivi la mappa o fai una domanda..." rows="1"></textarea>
+        <button id="btn-send-ai" class="btn-primary btn-icon" title="Invia">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Hidden file input for import -->
