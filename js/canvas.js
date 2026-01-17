@@ -81,7 +81,7 @@ function setupPanning() {
             if (now - lastCmdTime < 400) { // 400ms threshold
                 lassoModeActive = true;
                 canvasContainer.style.cursor = 'crosshair'; // Visual feedback
-                import('./ui.js').then(({ showToast }) => showToast('Lasso Mode: Disegna!', 'info', 2000));
+                import('./ui.js').then(({ showToast }) => showToast('Lazo Attivo (Tieni premuto Cmd)', 'info', 2000));
             }
             lastCmdTime = now;
         }
@@ -115,22 +115,21 @@ function setupPanning() {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.font-size-dropdown')) return;
 
-        // LASSO SELECTION: Double-tap Cmd OR Cmd/Ctrl + Alt
-        if (lassoModeActive || ((e.ctrlKey || e.metaKey) && e.altKey)) {
-            lassoModeActive = false; // Reset after one use
-            canvasContainer.style.cursor = '';
-
-            import('./nodes.js').then(({ startLassoSelection }) => {
-                startLassoSelection(e);
-            });
-            return;
-        }
-
-        // BOX SELECTION: Ctrl/Cmd only
+        // Check for Box Selection Modifier (Ctrl/Cmd)
+        // If Lasso Mode is active OR Alt is held -> Lasso
+        // Else -> Box
         if (e.ctrlKey || e.metaKey) {
-            import('./nodes.js').then(({ startSelectionBox }) => {
-                startSelectionBox(e);
-            });
+            if (lassoModeActive || e.altKey) {
+                lassoModeActive = false; // Reset
+                canvasContainer.style.cursor = '';
+                import('./nodes.js').then(({ startLassoSelection }) => {
+                    startLassoSelection(e);
+                });
+            } else {
+                import('./nodes.js').then(({ startSelectionBox }) => {
+                    startSelectionBox(e);
+                });
+            }
             return;
         }
 
