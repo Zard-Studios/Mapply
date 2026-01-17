@@ -45,13 +45,23 @@ export function initNodes(map, options = {}) {
     });
 
     document.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        const isEditing = active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+
         if ((e.key === 'Backspace' || e.key === 'Delete') && selectedNodeId) {
-            const active = document.activeElement;
-            if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
-                return;
-            }
+            if (isEditing) return;
             e.preventDefault();
             deleteNode(selectedNodeId);
+        }
+
+        if (e.key === 'Enter' && selectedNodeId && !isEditing) {
+            e.preventDefault();
+            const nodeEl = document.getElementById(selectedNodeId);
+            const contentEl = nodeEl?.querySelector('.node-content');
+            const toolbar = nodeEl?.querySelector('.node-toolbar');
+            if (contentEl && toolbar) {
+                enterEditMode(contentEl, toolbar);
+            }
         }
     });
 
@@ -343,6 +353,17 @@ function setupNodeEvents(nodeEl, nodeData) {
     });
 
     contentEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (e.shiftKey) {
+                // Let Shift+Enter perform its default action (newline)
+                return;
+            } else {
+                // Enter only: commit changes and exit
+                e.preventDefault();
+                contentEl.blur();
+            }
+        }
+
         if (e.ctrlKey || e.metaKey) {
             if (e.key === 'b') { e.preventDefault(); applyTextStyle('bold'); }
             else if (e.key === 'i') { e.preventDefault(); applyTextStyle('italic'); }
