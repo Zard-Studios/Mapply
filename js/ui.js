@@ -237,6 +237,35 @@ export function initContextMenu() {
     let clickX = 0;
     let clickY = 0;
 
+    // Detect OS for shortcuts
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const mod = isMac ? 'Cmd' : 'Ctrl';
+
+    // Populate shortcuts
+    const shortcuts = {
+        'cut': `${mod}+X`,
+        'copy': `${mod}+C`,
+        'duplicate': `${mod}+D`,
+        'paste': `${mod}+V`,
+        'select-all': `${mod}+A`,
+        'reset-view': 'F',
+        'delete': 'Del/Back'
+    };
+
+    // Apply shortcuts to menu items
+    for (const [action, label] of Object.entries(shortcuts)) {
+        const item = menu.querySelector(`[data-action="${action}"]`);
+        if (item) {
+            let shortcutSpan = item.querySelector('.shortcut');
+            if (!shortcutSpan) {
+                shortcutSpan = document.createElement('span');
+                shortcutSpan.className = 'shortcut';
+                item.appendChild(shortcutSpan);
+            }
+            shortcutSpan.textContent = label;
+        }
+    }
+
     // 1. Disable native menu & show custom
     document.addEventListener('contextmenu', (e) => {
         // Keep native menu for Inputs/Textareas so user can copy/paste text
