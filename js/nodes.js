@@ -1158,6 +1158,18 @@ export function startLassoSelection(e, onExitMode) {
         // 2. Lasso selected nothing (Empty)
         if (!hasMoved || hitCount === 0) {
             onExitMode?.();
+        } else {
+            // If we moved and selected something, prevent the subsequent 'click' event
+            // from clearing the selection (since document 'click' listener clears if no modifier keys)
+            const preventClick = (ce) => {
+                ce.stopPropagation();
+                ce.preventDefault();
+                document.removeEventListener('click', preventClick, true);
+            };
+            document.addEventListener('click', preventClick, true);
+
+            // Fallback cleanup in case click doesn't fire
+            setTimeout(() => document.removeEventListener('click', preventClick, true), 100);
         }
     };
 
