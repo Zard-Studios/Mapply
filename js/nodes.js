@@ -489,7 +489,13 @@ function hideAllToolbars(excludeNode = null) {
 
     if (!excludeNode) {
         activeToolbar = null;
-        window.getSelection()?.removeAllRanges();
+        // Don't clear selection if we are focused on the Title or Inputs
+        const active = document.activeElement;
+        const isUIInput = active && (active.id === 'map-title' || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+
+        if (!isUIInput) {
+            window.getSelection()?.removeAllRanges();
+        }
     }
 }
 
