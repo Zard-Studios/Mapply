@@ -119,11 +119,7 @@ function renderNode(nodeData) {
       <div class="toolbar-divider"></div>
       <div class="font-size-control">
         <input type="number" class="font-size-input" value="${fontSize}" min="8" max="72" title="Digita dimensione">
-        <button class="toolbar-btn font-size-arrow" data-action="fontDropdown" aria-label="Scegli dimensione" title="Scegli dimensione">
-          <svg class="toolbar-icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
+        <span class="font-size-unit">pt</span>
       </div>
       <div class="toolbar-divider"></div>
       <button class="toolbar-btn delete-btn" data-action="delete" aria-label="Elimina" title="Elimina nodo">
@@ -131,11 +127,6 @@ function renderNode(nodeData) {
           <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
         </svg>
       </button>
-    </div>
-    <div class="font-size-dropdown" data-visible="false">
-      ${FONT_SIZES.map(size => `
-        <button class="font-size-option ${size === fontSize ? 'active' : ''}" data-size="${size}">${size}pt</button>
-      `).join('')}
     </div>
     <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}px;">${nodeData.content || ''}</div>
     <div class="node-handle node-handle-top" data-handle="top"></div>
@@ -231,8 +222,6 @@ function setupNodeEvents(nodeEl, nodeData) {
                 // Update toolbar state immediately
                 updateToolbarState(toolbar, contentEl);
                 contentEl.focus();
-            } else if (action === 'fontDropdown') {
-                toggleFontDropdown(fontDropdown);
             } else if (action === 'delete') {
                 deleteNode(nodeData.id);
             }
@@ -278,23 +267,6 @@ function setupNodeEvents(nodeEl, nodeData) {
             }
         });
     }
-
-    // Font size dropdown options
-    fontDropdown.querySelectorAll('.font-size-option').forEach(option => {
-        option.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-        });
-
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const size = parseInt(option.dataset.size);
-            setNodeFontSize(nodeEl, nodeData, size);
-            // Update input value too
-            if (fontInput) fontInput.value = size;
-            hideFontDropdown(fontDropdown);
-            contentEl.focus();
-        });
-    });
 
     // Content editing
     contentEl.addEventListener('input', () => {
@@ -406,12 +378,6 @@ function hideAllToolbars(excludeNode = null) {
             const content = node.querySelector('.node-content');
             if (content) content.setAttribute('contenteditable', 'false');
         }
-    });
-
-    document.querySelectorAll('.font-size-dropdown[data-visible="true"]').forEach(d => {
-        // Checking if dropdown belongs to excluded node would be good too
-        // For now, simpler to just hide all dropdowns as they auto-close
-        d.dataset.visible = 'false';
     });
 
     // Safety check check: disable editing on other nodes (but NOT the excluded one)
