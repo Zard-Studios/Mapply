@@ -1,9 +1,12 @@
 /**
  * nodes.js – Node creation, management, and interactions
  * Handles drag & drop, selection, and editing
+ * 
+ * SIMPLIFIED: Removed icons, color borders, title requirement
+ * Added: Text styling (bold, italic, underline)
  */
 
-import { createNode, createConnection, MAX_SECONDARY_NODES } from './schema.js';
+import { createNode, createConnection } from './schema.js';
 import { screenToCanvas } from './canvas.js';
 import { updateConnections } from './connections.js';
 
@@ -15,16 +18,6 @@ let dragState = null;
 
 // Callbacks
 let onNodeChange = null;
-let onConnectionCreate = null;
-
-// SVG Icons for nodes
-const NODE_ICONS = {
-    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-    lightning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
-    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-    lightbulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>'
-};
 
 /**
  * Initialize nodes module
@@ -35,7 +28,6 @@ export function initNodes(map, options = {}) {
     nodesLayer = document.getElementById('nodes-layer');
     currentMap = map;
     onNodeChange = options.onNodeChange;
-    onConnectionCreate = options.onConnectionCreate;
 
     // Render all nodes from map
     renderAllNodes();
@@ -75,23 +67,34 @@ function renderNode(nodeData) {
     const node = document.createElement('div');
     node.className = `node node-${nodeData.type}`;
     node.id = nodeData.id;
-    node.dataset.color = nodeData.color;
     node.style.left = `${nodeData.x}px`;
     node.style.top = `${nodeData.y}px`;
 
+    // Simplified node HTML - no icons, no color border
     node.innerHTML = `
     <div class="node-actions">
+      <button class="node-action-btn style-btn" data-style="bold" aria-label="Grassetto" title="Grassetto (Ctrl+B)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+        </svg>
+      </button>
+      <button class="node-action-btn style-btn" data-style="italic" aria-label="Corsivo" title="Corsivo (Ctrl+I)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>
+        </svg>
+      </button>
+      <button class="node-action-btn style-btn" data-style="underline" aria-label="Sottolineato" title="Sottolineato (Ctrl+U)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/>
+        </svg>
+      </button>
       <button class="node-action-btn delete" aria-label="Elimina nodo" title="Elimina">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
         </svg>
       </button>
     </div>
-    <div class="node-header">
-      <div class="node-icon">${NODE_ICONS[nodeData.icon] || NODE_ICONS.star}</div>
-      <div class="node-title" contenteditable="true" spellcheck="false">${escapeHtml(nodeData.title)}</div>
-    </div>
-    <div class="node-text" contenteditable="true" spellcheck="false">${escapeHtml(nodeData.text)}</div>
+    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui...">${nodeData.content || ''}</div>
     <div class="node-handle node-handle-top" data-handle="top"></div>
     <div class="node-handle node-handle-bottom" data-handle="bottom"></div>
     <div class="node-handle node-handle-left" data-handle="left"></div>
@@ -108,10 +111,15 @@ function renderNode(nodeData) {
  * Setup event listeners for a node
  */
 function setupNodeEvents(nodeEl, nodeData) {
-    // Selection
+    // Selection and drag start
     nodeEl.addEventListener('mousedown', (e) => {
         if (e.target.closest('.node-action-btn') || e.target.closest('.node-handle')) return;
-        if (e.target.contentEditable === 'true') return;
+
+        // Allow clicking into contenteditable
+        if (e.target.contentEditable === 'true') {
+            selectNode(nodeData.id);
+            return;
+        }
 
         selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
@@ -123,22 +131,35 @@ function setupNodeEvents(nodeEl, nodeData) {
         deleteNode(nodeData.id);
     });
 
-    // Title editing
-    const titleEl = nodeEl.querySelector('.node-title');
-    titleEl.addEventListener('blur', () => {
-        updateNodeField(nodeData.id, 'title', titleEl.textContent.trim() || 'Senza titolo');
-    });
-    titleEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            titleEl.blur();
-        }
+    // Text styling buttons
+    nodeEl.querySelectorAll('.style-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const style = btn.dataset.style;
+            applyTextStyle(style);
+        });
     });
 
-    // Text editing
-    const textEl = nodeEl.querySelector('.node-text');
-    textEl.addEventListener('blur', () => {
-        updateNodeField(nodeData.id, 'text', textEl.textContent.trim());
+    // Content editing
+    const contentEl = nodeEl.querySelector('.node-content');
+    contentEl.addEventListener('input', () => {
+        updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+    });
+
+    // Keyboard shortcuts for text styling
+    contentEl.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'b') {
+                e.preventDefault();
+                applyTextStyle('bold');
+            } else if (e.key === 'i') {
+                e.preventDefault();
+                applyTextStyle('italic');
+            } else if (e.key === 'u') {
+                e.preventDefault();
+                applyTextStyle('underline');
+            }
+        }
     });
 
     // Connection handles
@@ -151,15 +172,25 @@ function setupNodeEvents(nodeEl, nodeData) {
 }
 
 /**
+ * Apply text style to selected text
+ */
+function applyTextStyle(style) {
+    document.execCommand(style, false, null);
+}
+
+/**
  * Start dragging a node
  */
 function startDrag(e, nodeEl, nodeData) {
+    const currentX = parseFloat(nodeEl.style.left) || nodeData.x;
+    const currentY = parseFloat(nodeEl.style.top) || nodeData.y;
+
     dragState = {
         nodeId: nodeData.id,
         startX: e.clientX,
         startY: e.clientY,
-        nodeStartX: nodeData.x,
-        nodeStartY: nodeData.y
+        nodeStartX: currentX,
+        nodeStartY: currentY
     };
 
     nodeEl.classList.add('dragging');
@@ -178,16 +209,16 @@ function startDrag(e, nodeEl, nodeData) {
         nodeEl.style.left = `${newX}px`;
         nodeEl.style.top = `${newY}px`;
 
-        // Update connections
+        // Update connections in real-time (reads from DOM)
         updateConnections(currentMap);
     };
 
-    const onMouseUp = () => {
+    const onMouseUp = (upEvent) => {
         if (!dragState) return;
 
         const { scale } = window.canvasTransform || { scale: 1 };
-        const dx = (event.clientX - dragState.startX) / scale;
-        const dy = (event.clientY - dragState.startY) / scale;
+        const dx = (upEvent.clientX - dragState.startX) / scale;
+        const dy = (upEvent.clientY - dragState.startY) / scale;
 
         const newX = dragState.nodeStartX + dx;
         const newY = dragState.nodeStartY + dy;
@@ -225,21 +256,10 @@ export function selectNode(nodeId) {
 
 /**
  * Add a new node at canvas center
+ * NO LIMIT on number of nodes
  */
 export function addNodeAtCenter() {
     if (!currentMap) return;
-
-    // Check secondary node limit
-    const secondaryCount = currentMap.nodes.filter(n => n.type === 'secondary').length;
-    const hasMain = currentMap.nodes.some(n => n.type === 'main');
-
-    // Determine node type
-    const type = !hasMain ? 'main' : 'secondary';
-
-    if (type === 'secondary' && secondaryCount >= MAX_SECONDARY_NODES) {
-        window.showToast?.(`Massimo ${MAX_SECONDARY_NODES} nodi secondari`, 'warning');
-        return;
-    }
 
     // Get canvas center
     const container = document.getElementById('canvas-container');
@@ -249,13 +269,16 @@ export function addNodeAtCenter() {
         rect.top + rect.height / 2
     );
 
-    // Create node
+    // Determine type based on whether there's already a main node
+    const hasMain = currentMap.nodes.some(n => n.type === 'main');
+    const type = !hasMain ? 'main' : 'secondary';
+
+    // Create node (no title requirement, just content)
     const node = createNode({
         type,
-        title: type === 'main' ? 'Concetto principale' : 'Nuovo concetto',
+        content: '',
         x: Math.round(center.x),
-        y: Math.round(center.y),
-        color: ['purple', 'blue', 'green', 'orange', 'pink'][currentMap.nodes.length % 5]
+        y: Math.round(center.y)
     });
 
     // Add to map
@@ -264,6 +287,12 @@ export function addNodeAtCenter() {
     // Render and select
     renderNode(node);
     selectNode(node.id);
+
+    // Focus the content for immediate editing
+    setTimeout(() => {
+        const contentEl = document.querySelector(`#${node.id} .node-content`);
+        contentEl?.focus();
+    }, 50);
 
     // Notify change
     onNodeChange?.();
@@ -317,23 +346,9 @@ function updateNodeField(nodeId, field, value) {
 /**
  * Start creating a connection
  */
-let tempConnection = null;
-
 function startConnection(fromNodeId, fromHandle) {
-    const fromNode = currentMap.nodes.find(n => n.id === fromNodeId);
-    if (!fromNode) return;
-
     const container = document.getElementById('canvas-container');
     container.classList.add('connecting');
-
-    tempConnection = {
-        fromId: fromNodeId,
-        fromHandle
-    };
-
-    const onMouseMove = (e) => {
-        // Draw temporary connection line (handled in connections.js)
-    };
 
     const onMouseUp = (e) => {
         container.classList.remove('connecting');
@@ -343,17 +358,13 @@ function startConnection(fromNodeId, fromHandle) {
         if (target) {
             const toNodeEl = target.closest('.node');
             if (toNodeEl && toNodeEl.id !== fromNodeId) {
-                // Create connection
                 createNodeConnection(fromNodeId, toNodeEl.id);
             }
         }
 
-        tempConnection = null;
-        document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     };
 
-    document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 }
 
@@ -382,13 +393,4 @@ function createNodeConnection(fromId, toId) {
  */
 export function getSelectedNodeId() {
     return selectedNodeId;
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }

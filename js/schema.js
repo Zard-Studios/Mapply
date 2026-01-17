@@ -1,19 +1,11 @@
 /**
  * schema.js – JSON Schema for concept maps
- * IMMUTABLE format for data persistence and export
+ * SIMPLIFIED: Removed icons, colors, node limits
+ * Nodes now have just 'content' (HTML with styling)
  */
 
 // Current schema version
-export const SCHEMA_VERSION = '1.0';
-
-// Available node colors
-export const NODE_COLORS = ['purple', 'blue', 'green', 'orange', 'pink'];
-
-// Available node icons
-export const NODE_ICONS = ['star', 'lightning', 'book', 'link', 'lightbulb'];
-
-// Maximum secondary nodes per main node
-export const MAX_SECONDARY_NODES = 5;
+export const SCHEMA_VERSION = '1.1';
 
 /**
  * Generate a unique ID
@@ -43,25 +35,20 @@ export function createEmptyMap(title = 'Nuova Mappa') {
 
 /**
  * Create a new node
+ * SIMPLIFIED: Just type, content (HTML), and position
  * @param {Object} options - Node options
  * @returns {Object} New node object
  */
 export function createNode({
     type = 'secondary',
-    title = 'Nuovo concetto',
-    text = '',
-    icon = 'star',
-    color = 'purple',
+    content = '',
     x = 400,
     y = 300
 } = {}) {
     return {
         id: generateId('node'),
         type,
-        title,
-        text,
-        icon,
-        color,
+        content,  // HTML content with possible bold/italic/underline
         x,
         y
     };
@@ -100,7 +87,6 @@ export function validateMap(map) {
     if (Array.isArray(map.nodes)) {
         map.nodes.forEach((node, i) => {
             if (!node.id) errors.push(`Node ${i}: missing id`);
-            if (!node.title) errors.push(`Node ${i}: missing title`);
             if (typeof node.x !== 'number') errors.push(`Node ${i}: x must be a number`);
             if (typeof node.y !== 'number') errors.push(`Node ${i}: y must be a number`);
         });
@@ -129,9 +115,10 @@ export function validateMap(map) {
 
 /**
  * Example valid map (for reference)
+ * SIMPLIFIED: Just content, no icons/colors
  */
 export const EXAMPLE_MAP = {
-    version: '1.0',
+    version: '1.1',
     id: 'map_example',
     title: 'La Rivoluzione Francese',
     createdAt: '2026-01-17T02:08:05Z',
@@ -141,40 +128,28 @@ export const EXAMPLE_MAP = {
         {
             id: 'node_1',
             type: 'main',
-            title: 'Rivoluzione Francese',
-            text: '1789-1799',
-            icon: 'star',
-            color: 'purple',
+            content: '<b>Rivoluzione Francese</b><br>1789-1799',
             x: 400,
             y: 200
         },
         {
             id: 'node_2',
             type: 'secondary',
-            title: 'Cause',
-            text: 'Crisi economica, fame',
-            icon: 'lightning',
-            color: 'blue',
+            content: '<b>Cause</b><br>Crisi economica, fame',
             x: 200,
             y: 350
         },
         {
             id: 'node_3',
             type: 'secondary',
-            title: 'Eventi chiave',
-            text: 'Presa della Bastiglia',
-            icon: 'book',
-            color: 'green',
+            content: '<b>Eventi chiave</b><br>Presa della Bastiglia',
             x: 400,
             y: 350
         },
         {
             id: 'node_4',
             type: 'secondary',
-            title: 'Conseguenze',
-            text: 'Fine della monarchia',
-            icon: 'lightbulb',
-            color: 'orange',
+            content: '<b>Conseguenze</b><br>Fine della monarchia',
             x: 600,
             y: 350
         }
