@@ -19,6 +19,8 @@ let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
 let isSpacePressed = false; // Spacebar held = pan mode
+let lastMouseX = window.innerWidth / 2;
+let lastMouseY = window.innerHeight / 2;
 
 // Zoom limits
 const MIN_ZOOM = 0.25;
@@ -123,7 +125,6 @@ function setupPanning() {
                     // Exit Lasso Mode if empty selection or just a click
                     lassoModeActive = false;
                     canvasContainer.style.cursor = '';
-                    import('./ui.js').then(({ showToast }) => showToast('Modalità Lazo disattivata', 'info', 1000));
                 });
             });
             return;
@@ -150,6 +151,8 @@ function setupPanning() {
     });
 
     document.addEventListener('mousemove', (e) => {
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
         if (isPanning) {
             // Safety: Stop panning if Left Click is not held (e.g. lost focus or button swap)
             if (e.buttons !== undefined && (e.buttons & 1) === 0) {
@@ -408,6 +411,15 @@ function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         // Don't trigger if editing text
         if (isEditingText()) return;
+
+        // Q = Add Node at mouse position
+        if (e.key === 'q' || e.key === 'Q') {
+            e.preventDefault();
+            const { x, y } = screenToCanvas(lastMouseX, lastMouseY);
+            import('./nodes.js').then(({ addNodeAtLocation }) => {
+                addNodeAtLocation(x, y);
+            });
+        }
 
         // F = Fit to view (find your project!)
         if (e.key === 'f' || e.key === 'F') {
