@@ -284,12 +284,28 @@ async function createMapFromAI(mapData) {
         nodesCreated++;
     }
 
-    // Create child nodes in a circle around main
-    const radius = 200;
+    // Create child nodes in concentric rings
+    // Calculate how many nodes per ring (more space = better readability)
+    const nodeWidth = 180; // Approximate node width with padding
+    const nodeHeight = 80;
+    const baseRadius = 250;
+    const ringSpacing = 180;
+    const nodesPerRing = 8; // Max nodes per ring for good spacing
+
     childNodes.forEach((node, i) => {
-        const angle = (i / childNodes.length) * 2 * Math.PI - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle) - 80;
-        const y = centerY + radius * Math.sin(angle) - 40;
+        // Determine which ring this node belongs to
+        const ring = Math.floor(i / nodesPerRing);
+        const posInRing = i % nodesPerRing;
+        const nodesInThisRing = Math.min(nodesPerRing, childNodes.length - ring * nodesPerRing);
+
+        const radius = baseRadius + ring * ringSpacing;
+        const angle = (posInRing / nodesInThisRing) * 2 * Math.PI - Math.PI / 2;
+
+        // Add slight offset for each ring to prevent alignment
+        const angleOffset = ring * 0.2;
+
+        const x = centerX + radius * Math.cos(angle + angleOffset) - 80;
+        const y = centerY + radius * Math.sin(angle + angleOffset) - 40;
 
         const newNode = createNode({
             content: node.content,
