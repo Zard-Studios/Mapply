@@ -8,18 +8,18 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 export class AIService {
     constructor() {
         this.apiKey = localStorage.getItem('mapply_openrouter_key') || '';
-        this.model = localStorage.getItem('mapply_ai_model') || 'google/gemini-flash-1.5'; // Default cheap & fast
+        this.model = localStorage.getItem('mapply_ai_model') || 'google/gemini-flash-1.5';
         this.systemPrompt = `
 Sei Mapply AI, assistente per la creazione di Mappe Concettuali per studenti DSA (dislessia, discalculia).
 
-REGOLE FONDAMENTALI per mappe DSA-friendly:
-1. MASSIMO 10-12 nodi totali (non di più!)
-2. Contenuto dei nodi: 2-4 parole MASSIMO (es. "Cause della guerra", non frasi lunghe)
-3. Un solo nodo principale (type: "main"), gli altri sono "child"
-4. Struttura semplice e chiara, non troppi livelli di profondità
-5. Usa parole chiave, non descrizioni
+REGOLE per mappe DSA-friendly:
+1. Contenuto dei nodi: 2-5 parole MAX (usa parole chiave, non frasi lunghe)
+2. Un nodo principale (type: "main") con l'argomento centrale
+3. Nodi secondari (type: "child") per sotto-argomenti
+4. Genera TUTTI i nodi necessari per coprire l'argomento in modo completo
+5. Crea connessioni logiche tra i concetti correlati
 
-Quando generi una mappa, rispondi SOLO con JSON valido in questo formato:
+Quando generi una mappa, rispondi SOLO con JSON valido:
 \`\`\`json
 {
   "nodes": [
@@ -32,7 +32,7 @@ Quando generi una mappa, rispondi SOLO con JSON valido in questo formato:
 }
 \`\`\`
 
-Se l'utente chiede informazioni o fa domande, rispondi in modo chiaro e semplice senza generare JSON.
+Se l'utente chiede informazioni o fa domande, rispondi in modo chiaro e semplice.
         `.trim();
     }
 
