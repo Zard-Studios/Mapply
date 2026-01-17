@@ -787,8 +787,7 @@ function startDrag(e, nodeEl, nodeData) {
         const { scale } = window.canvasTransform || { scale: 1 };
         const dx = (ue.clientX - dragState.startX) / scale;
         const dy = (ue.clientY - dragState.startY) / scale;
-        updateNodeField(dragState.nodeId, 'x', Math.round(dragState.nodeStartX + dx));
-        updateNodeField(dragState.nodeId, 'y', Math.round(dragState.nodeStartY + dy));
+        updateNodePosition(dragState.nodeId, Math.round(dragState.nodeStartX + dx), Math.round(dragState.nodeStartY + dy));
         el?.classList.remove('dragging');
         dragState = null;
         document.removeEventListener('mousemove', onMouseMove);
@@ -969,4 +968,17 @@ function createNodeConnection(fromId, toId) {
  */
 export function getSelectedNodeId() {
     return selectedNodeId;
+}
+
+/**
+ * Update node position (Atomic X+Y update for History)
+ */
+function updateNodePosition(nodeId, x, y) {
+    if (!currentMap) return;
+    const node = currentMap.nodes.find(n => n.id === nodeId);
+    if (node) {
+        node.x = x;
+        node.y = y;
+        onNodeChange?.();
+    }
 }
