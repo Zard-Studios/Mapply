@@ -252,6 +252,7 @@ function extractMapJSON(text) {
 
 /**
  * Create nodes and connections on the canvas from AI-generated data
+ * Uses HIERARCHICAL TOP-DOWN layout
  */
 async function createMapFromAI(mapData) {
     const { createNode, createConnection } = await import('../schema.js');
@@ -260,62 +261,81 @@ async function createMapFromAI(mapData) {
     const idMapping = new Map(); // AI ID -> Real ID
     let nodesCreated = 0;
 
-    // Calculate starting position (center of viewport, then spread out)
+    // Calculate starting position
     const canvas = document.getElementById('viewport');
-    const rect = canvas?.getBoundingClientRect() || { width: 800, height: 600 };
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    const rect = canvas?.getBoundingClientRect() || { width: 1200, height: 800 };
+    const startX = rect.width / 2;
+    const startY = 100;
 
-    // Layout nodes in a radial pattern from center
-    const totalNodes = mapData.nodes.length;
+    // Separate nodes by type
     const mainNode = mapData.nodes.find(n => n.type === 'main');
-    const childNodes = mapData.nodes.filter(n => n.type !== 'main');
+    const secondaryNodes = mapData.nodes.filter(n => n.type === 'secondary');
+    const childNodes = mapData.nodes.filter(n => n.type === 'child');
 
-    // Create main node at center
+    // Build parent-child relationships from connections
+    const childrenOf = new Map(); // parentId -> [childIds]
+    mapData.connections.forEach(conn => {
+        if (!childrenOf.has(conn.from)) childrenOf.set(conn.from, []);
+        childrenOf.get(conn.from).push(conn.to);
+    });
+
+    // Layout constants
+    const nodeWidth = 200;
+    const horizontalSpacing = 280;
+    const verticalSpacing = 150;
+
+    // LEVEL 1: Main node at top center
     if (mainNode) {
         const newNode = createNode({
             content: mainNode.content,
             type: 'main',
-            x: centerX - 80,
-            y: centerY - 40
+            x: startX - nodeWidth / 2,
+            y: startY
         });
         idMapping.set(mainNode.id, newNode.id);
         nodesModule.addNodeToMap(newNode);
         nodesCreated++;
     }
 
-    // Create child nodes in concentric rings
-    // Calculate how many nodes per ring (more space = better readability)
-    const nodeWidth = 180; // Approximate node width with padding
-    const nodeHeight = 80;
-    const baseRadius = 250;
-    const ringSpacing = 180;
-    const nodesPerRing = 8; // Max nodes per ring for good spacing
+    // LEVEL 2: Secondary nodes spread horizontally below main
+    const totalSecondary = secondaryNodes.length;
+    const totalSecondaryWidth = totalSecondary * horizontalSpacing;
+    const secondaryStartX = startX - totalSecondaryWidth / 2 + horizontalSpacing / 2;
+    const secondaryY = startY + verticalSpacing;
 
-    childNodes.forEach((node, i) => {
-        // Determine which ring this node belongs to
-        const ring = Math.floor(i / nodesPerRing);
-        const posInRing = i % nodesPerRing;
-        const nodesInThisRing = Math.min(nodesPerRing, childNodes.length - ring * nodesPerRing);
-
-        const radius = baseRadius + ring * ringSpacing;
-        const angle = (posInRing / nodesInThisRing) * 2 * Math.PI - Math.PI / 2;
-
-        // Add slight offset for each ring to prevent alignment
-        const angleOffset = ring * 0.2;
-
-        const x = centerX + radius * Math.cos(angle + angleOffset) - 80;
-        const y = centerY + radius * Math.sin(angle + angleOffset) - 40;
-
+    secondaryNodes.forEach((node, i) => {
+        const x = secondaryStartX + i * horizontalSpacing - nodeWidth / 2;
         const newNode = createNode({
             content: node.content,
-            type: 'child',
+            type: 'secondary',
             x: x,
-            y: y
+            y: secondaryY
         });
         idMapping.set(node.id, newNode.id);
         nodesModule.addNodeToMap(newNode);
         nodesCreated++;
+    });
+
+    // LEVEL 3+: Child nodes below their parents
+    secondaryNodes.forEach((secNode, secIndex) => {
+        const children = childrenOf.get(secNode.id) || [];
+        const secX = secondaryStartX + secIndex * horizontalSpacing - nodeWidth / 2;
+
+        children.forEach((childId, childIndex) => {
+            const childData = childNodes.find(n => n.id === childId);
+            if (!childData) return;
+
+            const childY = secondaryY + verticalSpacing + childIndex * 120;
+            const newNode = createNode({
+                content: childData.content,
+                type: 'child',
+                x: secX,
+                y: childY
+            });
+            idMapping.set(childData.id, newNode.id);
+            nodesModule.addNodeToMap(newNode);
+            nodesCreated++;
+        });
     });
 
     // Create connections
