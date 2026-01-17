@@ -621,8 +621,6 @@ export function selectNode(nodeId) {
         const el = document.getElementById(nodeId);
         if (el) {
             el.classList.add('selected');
-            // Bring to front
-            el.parentNode.appendChild(el);
         }
     }
 }
