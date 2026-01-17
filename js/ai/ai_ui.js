@@ -179,7 +179,7 @@ function formatText(text) {
 
 /**
  * Get current map context for AI
- * Returns a text summary of existing nodes and their connections
+ * Returns nodes with IDs so AI can reference them when adding new nodes
  */
 async function getCurrentMapContext() {
     try {
@@ -190,28 +190,21 @@ async function getCurrentMapContext() {
             return null;
         }
 
-        // Create node summaries with IDs for reference
-        const nodeMap = new Map();
+        // Build context with actual IDs
+        let context = `NODI ESISTENTI (usa questi ID per collegare nuovi nodi):\n`;
         map.nodes.forEach(node => {
-            nodeMap.set(node.id, node.content?.substring(0, 80) || '(vuoto)');
-        });
-
-        // Build context string
-        let context = `NODI (${map.nodes.length}):\n`;
-        map.nodes.forEach((node, i) => {
-            const typeLabel = node.type === 'main' ? '🔵 PRINCIPALE' :
-                node.type === 'secondary' ? '🟢 SECONDARIO' : '⚪ DETTAGLIO';
-            const content = node.content?.substring(0, 80) || '(vuoto)';
-            context += `${i + 1}. ${typeLabel}: "${content}"\n`;
+            const typeLabel = node.type === 'main' ? 'PRINCIPALE' :
+                node.type === 'secondary' ? 'SECONDARIO' : 'DETTAGLIO';
+            const content = node.content?.substring(0, 60) || '(vuoto)';
+            context += `- ID: "${node.id}" | Tipo: ${typeLabel} | Contenuto: "${content}"\n`;
         });
 
         // Add connections info
         if (map.connections && map.connections.length > 0) {
-            context += `\nCONNESSIONI (${map.connections.length}):\n`;
+            context += `\nCONNESSIONI ESISTENTI:\n`;
+
             map.connections.forEach(conn => {
-                const from = nodeMap.get(conn.from)?.substring(0, 30) || '?';
-                const to = nodeMap.get(conn.to)?.substring(0, 30) || '?';
-                context += `- "${from}" → "${to}"\n`;
+                context += `- "${conn.from}" → "${conn.to}"\n`;
             });
         }
 
@@ -334,20 +327,40 @@ function parseMarkdownToHTML(text) {
 async function createMapFromAI(mapData) {
     const { createNode, createConnection } = await import('../schema.js');
     const nodesModule = await import('../nodes.js');
+    const { getCurrentMap } = await import('../app.js');
 
     const idMapping = new Map(); // AI ID -> Real ID
     let nodesCreated = 0;
 
-    // Calculate starting position
+    // Get existing node IDs from current map
+    const currentMap = getCurrentMap();
+    const existingNodeIds = new Set();
+    if (currentMap?.nodes) {
+        currentMap.nodes.forEach(n => existingNodeIds.add(n.id));
+    }
+
+    // Calculate starting position (offset from existing nodes)
     const canvas = document.getElementById('viewport');
     const rect = canvas?.getBoundingClientRect() || { width: 1200, height: 800 };
-    const startX = rect.width / 2;
-    const startY = 100;
 
-    // Separate nodes by type
-    const mainNode = mapData.nodes.find(n => n.type === 'main');
-    const secondaryNodes = mapData.nodes.filter(n => n.type === 'secondary');
-    const childNodes = mapData.nodes.filter(n => n.type === 'child');
+    // Find rightmost existing node to add new ones to the right
+    let startX = rect.width / 2;
+    let startY = 100;
+    if (currentMap?.nodes?.length > 0) {
+        const rightmostNode = currentMap.nodes.reduce((max, n) =>
+            (n.x || 0) > (max.x || 0) ? n : max, currentMap.nodes[0]);
+        startX = (rightmostNode.x || 0) + 400; // Add to the right of existing
+        startY = rightmostNode.y || 100;
+    }
+
+    // Separate ONLY NEW nodes (not existing ones)
+    const newNodes = mapData.nodes.filter(n => !existingNodeIds.has(n.id));
+    const mainNode = newNodes.find(n => n.type === 'main');
+    const secondaryNodes = newNodes.filter(n => n.type === 'secondary');
+    const childNodes = newNodes.filter(n => n.type === 'child');
+
+    // Pre-map existing IDs (for connections to existing nodes)
+    existingNodeIds.forEach(id => idMapping.set(id, id));
 
     // Build parent-child relationships from connections
     const childrenOf = new Map(); // parentId -> [childIds]
