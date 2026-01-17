@@ -12,6 +12,7 @@ let currentMap = null;
 let selectedNodeId = null;
 let dragState = null;
 let activeToolbar = null; // Track which toolbar is visible
+let phantomNode = null;
 
 // Callbacks
 let onNodeChange = null;
@@ -53,6 +54,36 @@ export function initNodes(map, options = {}) {
             deleteNode(selectedNodeId);
         }
     });
+
+    createPhantomNode();
+}
+
+/**
+ * Create the phantom node for drag-to-create preview
+ */
+function createPhantomNode() {
+    if (phantomNode || !nodesLayer) return;
+    phantomNode = document.createElement('div');
+    phantomNode.className = 'node-phantom';
+    nodesLayer.appendChild(phantomNode);
+}
+
+/**
+ * Update phantom node position
+ */
+function updatePhantomNode(clientX, clientY) {
+    if (!phantomNode) return;
+    const { x, y } = screenToCanvas(clientX, clientY);
+    phantomNode.style.left = `${x - 80}px`;
+    phantomNode.style.top = `${y - 40}px`;
+    phantomNode.style.display = 'block';
+}
+
+/**
+ * Hide phantom node
+ */
+function hidePhantomNode() {
+    if (phantomNode) phantomNode.style.display = 'none';
 }
 
 /**
@@ -490,18 +521,44 @@ export function selectNode(nodeId) {
 /**
  * Add node at center
  */
-export function addNodeAtCenter() {
+function addNodeAtCenter() {
     if (!currentMap) return;
     const container = document.getElementById('canvas-container');
     const rect = container.getBoundingClientRect();
     const center = screenToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return addNodeAtLocation(center.x, center.y);
+}
+
+/**
+ * Add node at specific canvas location
+ */
+export function addNodeAtLocation(x, y) {
+    if (!currentMap) return;
     const hasMain = currentMap.nodes.some(n => n.type === 'main');
     const type = !hasMain ? 'main' : 'secondary';
-    const node = createNode({ type, content: '', fontSize: DEFAULT_FONT_SIZE, x: Math.round(center.x), y: Math.round(center.y) });
+    const node = createNode({
+        type,
+        content: '',
+        fontSize: DEFAULT_FONT_SIZE,
+        x: Math.round(x),
+        y: Math.round(y)
+    });
     currentMap.nodes.push(node);
     renderNode(node);
     selectNode(node.id);
-    setTimeout(() => { document.querySelector(`#${node.id} .node-content`)?.focus(); }, 50);
+
+    // Auto edit mode
+    setTimeout(() => {
+        const nodeEl = document.getElementById(node.id);
+        const contentEl = nodeEl?.querySelector('.node-content');
+        const toolbar = nodeEl?.querySelector('.node-toolbar');
+        if (contentEl && toolbar) {
+            enterEditMode(contentEl, toolbar);
+        }
+    }, 50);
+
+    onNodeChange?.();
+    return node;
 }
 
 /**
@@ -539,16 +596,36 @@ function startConnection(fromNodeId) {
     container.classList.add('connecting');
     import('./connections.js').then(({ startConnectionPreview, endConnectionPreview }) => {
         startConnectionPreview(fromNodeId);
+
+        const onMouseMove = (e) => {
+            const target = e.target.closest('.node-handle') || e.target.closest('.node');
+            if (!target) {
+                updatePhantomNode(e.clientX, e.clientY);
+            } else {
+                hidePhantomNode();
+            }
+        };
+
         const onMouseUp = (e) => {
             container.classList.remove('connecting');
             endConnectionPreview();
+            hidePhantomNode();
+
             const target = e.target.closest('.node-handle') || e.target.closest('.node');
             if (target) {
                 const toNodeEl = target.closest('.node');
                 if (toNodeEl && toNodeEl.id !== fromNodeId) createNodeConnection(fromNodeId, toNodeEl.id);
+            } else {
+                // Drop on empty space -> Create new node
+                const { x, y } = screenToCanvas(e.clientX, e.clientY);
+                // Center node on mouse (roughly 160x80)
+                const newNode = addNodeAtLocation(x - 80, y - 40);
+                createNodeConnection(fromNodeId, newNode.id);
             }
+            document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
+        document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
 }
