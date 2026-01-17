@@ -473,6 +473,13 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     if (highlight) {
         highlight.style.fontSize = `${size}pt`;
 
+        // CRITICAL: Remove font-size from all children so they inherit the new size
+        // Otherwise, previous inline styles (e.g. <span style="font-size:12pt">) block the update
+        const children = highlight.querySelectorAll('*');
+        children.forEach(child => {
+            child.style.fontSize = '';
+        });
+
         // Re-select to keep selection active for other buttons, 
         // BUT ONLY IF we are not currently typing in the input (which would steal focus)
         const active = document.activeElement;
