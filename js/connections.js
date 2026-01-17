@@ -126,8 +126,8 @@ function createConnectionPath(conn, containerRect) {
     group.addEventListener('mouseenter', handleEnter);
     group.addEventListener('mouseleave', handleLeave);
 
-    // Right-click to delete
-    group.addEventListener('contextmenu', (e) => {
+    // Left-click to delete
+    group.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         hideDeleteHint();
