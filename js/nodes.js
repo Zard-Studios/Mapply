@@ -598,9 +598,18 @@ function updateToolbarState(toolbar, contentEl) {
         let container = range.startContainer;
         if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
 
-        // If we are at the edge of contentEl, container might be nodeEl or nodesLayer
-        // Ensure we at least point to contentEl for style detection
-        if (!contentEl.contains(container)) {
+        // CRITICAL FIX: If selection is collapsed (cursor only), startContainer might be misleading 
+        // if we are at the edge. Let's prefer anchorNode's parent if valid.
+        if (selection.isCollapsed && selection.anchorNode) {
+            let anchorParent = selection.anchorNode;
+            if (anchorParent.nodeType === Node.TEXT_NODE) anchorParent = anchorParent.parentElement;
+            if (contentEl.contains(anchorParent)) {
+                container = anchorParent;
+            }
+        }
+
+        // If we fell out of contentEl, snap back
+        if (!contentEl.contains(container) && container !== contentEl) {
             container = contentEl;
         }
 
