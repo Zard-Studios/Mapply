@@ -136,8 +136,17 @@ function setActiveMap(map) {
     // Initialize History
     history.clear(map);
 
-    // Render connections
-    updateConnections(map);
+    // Render connections with layout safety
+    // Wait for fonts and layout to settle to prevent "jumping" lines on load
+    document.fonts.ready.then(() => {
+        requestAnimationFrame(() => {
+            updateConnections(map);
+            // Double RAF to ensure generic layout reflows are done
+            requestAnimationFrame(() => {
+                updateConnections(map);
+            });
+        });
+    });
 }
 
 /**
