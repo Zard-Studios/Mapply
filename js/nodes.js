@@ -1491,6 +1491,19 @@ export function getSelectedNodeId() {
     return selectedNodeId;
 }
 
+export function getSelectionSize() {
+    return selectedNodeIds.size;
+}
+
+export function getClipboardSize() {
+    return clipboard.length;
+}
+
+export function selectAllNodes() {
+    if (!currentMap) return;
+    currentMap.nodes.forEach(n => addToSelection(n.id));
+}
+
 /**
  * Update node position (Atomic X+Y update for History)
  */
