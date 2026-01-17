@@ -34,6 +34,13 @@ let currentMap = null;
 let saveTimeout = null;
 
 /**
+ * Get the current map state (for AI context)
+ */
+export function getCurrentMap() {
+    return currentMap;
+}
+
+/**
  * Initialize the application
  */
 async function init() {
