@@ -146,11 +146,14 @@ function showDeleteHint(connId) {
 
     currentHint = document.createElement('div');
     currentHint.className = 'connection-delete-hint';
+    // Only scissors icon, no text
     currentHint.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-            <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+            <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+            <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+            <line x1="8.12" y1="8.12" x2="12" y2="12"/>
         </svg>
-        <span>Tasto destro per eliminare</span>
     `;
     document.body.appendChild(currentHint);
 
@@ -159,8 +162,9 @@ function showDeleteHint(connId) {
             document.removeEventListener('mousemove', onMove);
             return;
         }
-        currentHint.style.left = `${e.clientX + 15}px`;
-        currentHint.style.top = `${e.clientY + 15}px`;
+        // Offset slightly to float near cursor
+        currentHint.style.left = `${e.clientX + 12}px`;
+        currentHint.style.top = `${e.clientY + 12}px`;
     };
     document.addEventListener('mousemove', onMove);
 }
