@@ -235,15 +235,31 @@ function setupNodeEvents(nodeEl, nodeData) {
 
     // Font size INPUT (manual entry)
     const fontInput = toolbar.querySelector('.font-size-input');
+    let savedSelection = null; // Save selection before input focus
+
     if (fontInput) {
+        // Save selection BEFORE focus moves to input
         fontInput.addEventListener('mousedown', (e) => {
             e.stopPropagation(); // Don't trigger drag
+
+            // Save the current selection from content area
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0 && contentEl.contains(selection.anchorNode)) {
+                savedSelection = selection.getRangeAt(0).cloneRange();
+            }
         });
 
         fontInput.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             if (size >= 8 && size <= 72) {
+                // Restore selection before applying
+                if (savedSelection) {
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(savedSelection);
+                }
                 setNodeFontSize(nodeEl, nodeData, size);
+                savedSelection = null;
                 contentEl.focus();
             }
         });
@@ -253,7 +269,14 @@ function setupNodeEvents(nodeEl, nodeData) {
                 e.preventDefault();
                 const size = parseInt(e.target.value);
                 if (size >= 8 && size <= 72) {
+                    // Restore selection before applying
+                    if (savedSelection) {
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(savedSelection);
+                    }
                     setNodeFontSize(nodeEl, nodeData, size);
+                    savedSelection = null;
                     contentEl.focus();
                 }
             }
