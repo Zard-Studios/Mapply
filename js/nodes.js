@@ -179,10 +179,15 @@ function setupNodeEvents(nodeEl, nodeData) {
         startDrag(e, nodeEl, nodeData);
     });
 
-    // Double click = enter edit mode
+    // Double click = enter edit mode (if not already editing)
     nodeEl.addEventListener('dblclick', (e) => {
         if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
         if (e.target.closest('.node-handle')) return;
+
+        // If already in edit mode, let browser handle double-click (word selection)
+        if (contentEl.getAttribute('contenteditable') === 'true') {
+            return; // Browser will select the word automatically
+        }
 
         enterEditMode(contentEl, toolbar);
     });
