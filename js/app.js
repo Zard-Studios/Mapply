@@ -359,9 +359,9 @@ function setupHistoryControls() {
             e.preventDefault();
             performUndo();
         }
-        
+
         // Redo: Ctrl+Shift+Z (Mac/Win) or Ctrl+Y (Win standard)
-        if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) || 
+        if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
             ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
             e.preventDefault();
             performRedo();
@@ -382,15 +382,15 @@ function performUndo() {
         currentMap = prevState;
         // Propagate state to modules
         setCurrentMap(currentMap);
-        
+
         // Refresh UI
-        renderAllNodes();
+        renderAllNodes(false);
         updateConnections(currentMap);
-        
+
         // Update other UI elements
         setMapTitle(currentMap.title);
         setLastMapId(currentMap.id);
-        
+
         scheduleAutoSave();
         showToast('Annulla', 'info');
     }
@@ -405,15 +405,15 @@ function performRedo() {
         currentMap = nextState;
         // Propagate state to modules
         setCurrentMap(currentMap);
-        
+
         // Refresh UI
         renderAllNodes();
         updateConnections(currentMap);
-        
+
         // Update other UI elements
         setMapTitle(currentMap.title);
         setLastMapId(currentMap.id);
-        
+
         scheduleAutoSave();
         showToast('Ripristina', 'info');
     }

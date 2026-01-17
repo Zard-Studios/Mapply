@@ -113,20 +113,23 @@ export function setCurrentMap(map) {
 /**
  * Render all nodes from current map
  */
-export function renderAllNodes() {
+export function renderAllNodes(animate = true) {
     nodesLayer.innerHTML = '';
     if (!currentMap || !currentMap.nodes) return;
     currentMap.nodes.forEach(node => {
-        renderNode(node);
+        renderNode(node, animate);
     });
 }
 
 /**
  * Render a single node
  */
-function renderNode(nodeData) {
+function renderNode(nodeData, animate = true) {
     const node = document.createElement('div');
     node.className = `node node-${nodeData.type}`;
+    if (!animate) {
+        node.style.animation = 'none';
+    }
     node.id = nodeData.id;
     node.style.left = `${nodeData.x}px`;
     node.style.top = `${nodeData.y}px`;
