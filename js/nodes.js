@@ -213,6 +213,9 @@ function setupNodeEvents(nodeEl, nodeData) {
                 applyTextStyle(action);
                 updateToolbarState(toolbar, contentEl);
                 contentEl.focus();
+
+                // Ensure changes are saved
+                updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
             } else if (action === 'delete') {
                 deleteNode(nodeData.id);
             }
@@ -395,7 +398,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
         sel.addRange(range);
 
         updateConnections(currentMap);
-        onNodeChange?.();
+        updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
         return;
     }
     // 2. Fallback to real selection
@@ -418,7 +421,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
                 selection.addRange(newRange);
 
                 updateConnections(currentMap);
-                onNodeChange?.();
+                updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
                 return;
             } catch (e) {
                 console.error('Font resize error', e);
