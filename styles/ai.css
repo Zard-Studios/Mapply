@@ -164,6 +164,14 @@
     transform: translateX(0);
 }
 
+/* Hide floating add button when AI panel is open */
+.ai-panel.visible~#canvas-container .btn-floating,
+body:has(.ai-panel.visible) .btn-floating {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(100px);
+}
+
 .ai-header {
     display: flex;
     align-items: center;
