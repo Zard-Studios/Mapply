@@ -151,6 +151,11 @@ function setupPanning() {
 
     document.addEventListener('mousemove', (e) => {
         if (isPanning) {
+            // Safety: Stop panning if Left Click is not held (e.g. lost focus or button swap)
+            if (e.buttons !== undefined && (e.buttons & 1) === 0) {
+                endPan();
+                return;
+            }
             pan(e.clientX, e.clientY);
         }
     });
