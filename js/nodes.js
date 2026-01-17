@@ -151,7 +151,7 @@ function renderNode(nodeData) {
       </button>
       <div class="toolbar-divider"></div>
       <div class="font-size-control">
-        <input type="number" class="font-size-input" value="${fontSize}" min="8" max="72" title="Digita dimensione">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="font-size-input" value="${fontSize}" title="Digita dimensione">
         <span class="font-size-unit">pt</span>
       </div>
       <div class="toolbar-divider"></div>
@@ -323,6 +323,12 @@ function setupNodeEvents(nodeEl, nodeData) {
             // Allow typing any number, just clamp reasonably for rendering
             if (!isNaN(size) && size >= 1 && size <= 300) {
                 setNodeFontSize(nodeEl, nodeData, size);
+            }
+        });
+
+        fontInput.addEventListener('focus', (e) => {
+            if (e.target.value.trim() === '-') {
+                e.target.value = '';
             }
         });
 
