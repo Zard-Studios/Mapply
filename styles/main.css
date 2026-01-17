@@ -557,3 +557,13 @@ body {
         transform: translateX(0);
     }
 }
+/* Selection Box for Rectangular Selection */
+.selection-box {
+    position: fixed;
+    border: 1px solid var(--accent);
+    background-color: rgba(99, 102, 241, 0.1); /* Low opacity accent */
+    border-radius: 4px;
+    pointer-events: none; /* Let events pass through */
+    z-index: 9999;
+    display: none;
+}

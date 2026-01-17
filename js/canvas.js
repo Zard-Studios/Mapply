@@ -91,6 +91,14 @@ function setupPanning() {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.font-size-dropdown')) return;
 
+        // Check for Box Selection Modifier (Ctrl or Cmd)
+        if (e.ctrlKey || e.metaKey) {
+            import('./nodes.js').then(({ startSelectionBox }) => {
+                startSelectionBox(e);
+            });
+            return;
+        }
+
         // Otherwise, START PANNING!
         startPan(e.clientX, e.clientY);
         e.preventDefault();

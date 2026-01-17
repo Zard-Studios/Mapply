@@ -10,6 +10,7 @@ import { updateConnections } from './connections.js';
 let nodesLayer = null;
 let currentMap = null;
 let selectedNodeId = null;
+let selectedNodeIds = new Set(); // Multi-selection set
 let dragState = null;
 let activeToolbar = null; // Track which toolbar is visible
 let phantomNode = null;
@@ -39,7 +40,10 @@ export function initNodes(map, options = {}) {
         if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
             hideAllToolbars();
             if (selectedNodeId && !e.target.closest('.connection-path')) {
-                selectNode(null);
+                // If not holding shift/cmd, clear selection
+                if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                    selectNode(null);
+                }
             }
         }
     });
@@ -51,7 +55,9 @@ export function initNodes(map, options = {}) {
         if ((e.key === 'Backspace' || e.key === 'Delete') && selectedNodeId) {
             if (isEditing) return;
             e.preventDefault();
-            deleteNode(selectedNodeId);
+            if (isEditing) return;
+            e.preventDefault();
+            deleteSelectedNodes();
         }
 
         if (e.key === 'Enter' && selectedNodeId && !isEditing) {
@@ -756,43 +762,103 @@ function updateToolbarState(toolbar, contentEl) {
 /**
  * Start dragging
  */
+/**
+ * Start dragging
+ */
 function startDrag(e, nodeEl, nodeData) {
-    if (dragState) {
-        document.getElementById(dragState.nodeId)?.classList.remove('dragging');
+    if (dragState) return;
+
+    // Multi-selection logic: 
+    // If the node we are dragging is NOT in the selection, select IT and clear others (unless modifier)
+    if (!selectedNodeIds.has(nodeData.id)) {
+        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            selectNode(nodeData.id);
+        } else {
+            toggleSelection(nodeData.id);
+        }
     }
-    const currentX = parseFloat(nodeEl.style.left) || nodeData.x;
-    const currentY = parseFloat(nodeEl.style.top) || nodeData.y;
+    // If it IS in the selection, we leave the selection as is (allows moving the group)
+
+    // Calculate initial offsets for ALL selected nodes
+    const initialPositions = new Map();
+    selectedNodeIds.forEach(id => {
+        const el = document.getElementById(id);
+        const data = currentMap.nodes.find(n => n.id === id);
+        if (el && data) {
+            initialPositions.set(id, {
+                startX: parseFloat(el.style.left) || data.x,
+                startY: parseFloat(el.style.top) || data.y
+            });
+        }
+    });
+
     dragState = {
-        nodeId: nodeData.id,
+        mainNodeId: nodeData.id, // The one we clicked
         startX: e.clientX,
         startY: e.clientY,
-        nodeStartX: currentX,
-        nodeStartY: currentY
+        initialPositions // Map of id -> {startX, startY}
     };
-    nodeEl.classList.add('dragging');
+
+    // Visual feedback
+    selectedNodeIds.forEach(id => {
+        document.getElementById(id)?.classList.add('dragging');
+    });
+
     const onMouseMove = (me) => {
         if (!dragState) return;
-        const el = document.getElementById(dragState.nodeId);
-        if (!el) return;
         const { scale } = window.canvasTransform || { scale: 1 };
         const dx = (me.clientX - dragState.startX) / scale;
         const dy = (me.clientY - dragState.startY) / scale;
-        el.style.left = `${dragState.nodeStartX + dx}px`;
-        el.style.top = `${dragState.nodeStartY + dy}px`;
+
+        // Move ALL selected nodes
+        dragState.initialPositions.forEach((pos, id) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.left = `${pos.startX + dx}px`;
+                el.style.top = `${pos.startY + dy}px`;
+            }
+        });
+
         updateConnections(currentMap);
     };
+
     const onMouseUp = (ue) => {
         if (!dragState) return;
-        const el = document.getElementById(dragState.nodeId);
         const { scale } = window.canvasTransform || { scale: 1 };
         const dx = (ue.clientX - dragState.startX) / scale;
         const dy = (ue.clientY - dragState.startY) / scale;
-        updateNodePosition(dragState.nodeId, Math.round(dragState.nodeStartX + dx), Math.round(dragState.nodeStartY + dy));
-        el?.classList.remove('dragging');
+
+        // Commit new positions for ALL selected nodes (History!)
+        // But we want to do this as a SINGLE history step if possible or batch it.
+        // For now, simple batch update (might make multiple history entries if not careful).
+        // Best approach: create a batch update function in App or History, but here we can just loop.
+        // Ideally we'd modify history to take a batch.
+
+        dragState.initialPositions.forEach((pos, id) => {
+            const el = document.getElementById(id);
+            // Use updateNodePosition to save state (note: multiple calls = multiple history, unless we debounce or batch)
+            // For this MVP, we accept it might be multiple undos, OR we can try to improve this later.
+            // Wait! updateNodePosition triggers onNodeChange which pushes history.
+            // If we move 10 nodes, we get 10 history states. User hates this.
+            // FIX: We need a batch update.
+
+            // Update model directly first
+            const node = currentMap.nodes.find(n => n.id === id);
+            if (node) {
+                node.x = Math.round(pos.startX + dx);
+                node.y = Math.round(pos.startY + dy);
+            }
+            el?.classList.remove('dragging');
+        });
+
+        // Trigger SINGLE change event after all updates
+        onNodeChange?.();
+
         dragState = null;
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     };
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 }
@@ -801,14 +867,145 @@ function startDrag(e, nodeEl, nodeData) {
  * Select a node
  */
 export function selectNode(nodeId) {
-    if (selectedNodeId) document.getElementById(selectedNodeId)?.classList.remove('selected');
-    selectedNodeId = nodeId;
+    // Clear previous visual selection
+    selectedNodeIds.forEach(id => document.getElementById(id)?.classList.remove('selected'));
+
+    // Clear set
+    selectedNodeIds.clear();
+
+    selectedNodeId = nodeId; // Keep strict reference to "primary" for toolbar
+
     if (nodeId) {
+        selectedNodeIds.add(nodeId);
         const el = document.getElementById(nodeId);
         if (el) {
             el.classList.add('selected');
         }
     }
+}
+
+/**
+ * Toggle selection of a node (for shift-click)
+ */
+export function toggleSelection(nodeId) {
+    const el = document.getElementById(nodeId);
+    if (selectedNodeIds.has(nodeId)) {
+        selectedNodeIds.delete(nodeId);
+        el?.classList.remove('selected');
+        if (selectedNodeId === nodeId) selectedNodeId = null; // Clear primary if deselected
+    } else {
+        selectedNodeIds.add(nodeId);
+        el?.classList.add('selected');
+        selectedNodeId = nodeId; // Make latest clicked primary
+    }
+}
+
+/**
+ * Add node to selection (for box select)
+ */
+export function addToSelection(nodeId) {
+    if (!selectedNodeIds.has(nodeId)) {
+        selectedNodeIds.add(nodeId);
+        document.getElementById(nodeId)?.classList.add('selected');
+    }
+}
+
+
+/**
+ * Start Rectangular Selection Box
+ */
+export function startSelectionBox(e) {
+    // Create UI element
+    const box = document.createElement('div');
+    box.className = 'selection-box';
+    document.body.appendChild(box);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    box.style.left = `${startX}px`;
+    box.style.top = `${startY}px`;
+    box.style.width = '0px';
+    box.style.height = '0px';
+    box.style.display = 'block';
+
+    // Clear selection unless shift is held (standard behavior)
+    if (!e.shiftKey) {
+        selectNode(null);
+    }
+
+    const onMouseMove = (me) => {
+        const currentX = me.clientX;
+        const currentY = me.clientY;
+
+        const left = Math.min(startX, currentX);
+        const top = Math.min(startY, currentY);
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+
+        box.style.left = `${left}px`;
+        box.style.top = `${top}px`;
+        box.style.width = `${width}px`;
+        box.style.height = `${height}px`;
+    };
+
+    const onMouseUp = (ue) => {
+        // Calculate intersection
+        const boxRect = box.getBoundingClientRect();
+
+        // Iterate all nodes to check intersection
+        // Optimization: Could use spatial index, but linear scan is fine for <1000 nodes
+        const nodes = document.querySelectorAll('.node');
+        nodes.forEach(nodeEl => {
+            const nodeRect = nodeEl.getBoundingClientRect();
+
+            // Intersection logic
+            if (
+                nodeRect.left < boxRect.right &&
+                nodeRect.right > boxRect.left &&
+                nodeRect.top < boxRect.bottom &&
+                nodeRect.bottom > boxRect.top
+            ) {
+                // Intersects!
+                addToSelection(nodeEl.id);
+            }
+        });
+
+        box.remove();
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+
+        // Update connections/UI if needed (not strictly for selection, but good practice)
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+/**
+ * Delete all selected nodes
+ */
+export function deleteSelectedNodes() {
+    if (selectedNodeIds.size === 0) return;
+
+    // Batch delete
+    const idsToDelete = Array.from(selectedNodeIds);
+    idsToDelete.forEach(id => {
+        // Remove from DOM
+        const el = document.getElementById(id);
+        el?.remove();
+
+        // Remove from Data
+        const idx = currentMap.nodes.findIndex(n => n.id === id);
+        if (idx !== -1) currentMap.nodes.splice(idx, 1);
+
+        // Remove connections
+        currentMap.connections = currentMap.connections.filter(c => c.from !== id && c.to !== id);
+    });
+
+    selectNode(null); // Clear selection
+    updateConnections(currentMap);
+    onNodeChange?.(); // Save history
 }
 
 /**
