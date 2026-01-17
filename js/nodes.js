@@ -1,11 +1,5 @@
 /**
  * nodes.js – Node creation, management, and interactions
- * 
- * Features:
- * - Animated floating toolbar (appears on focus, hides on blur)
- * - Text styling: Bold, Italic, Underline, Font Size
- * - 18pt default font size
- * - Drag & drop with smooth connections
  */
 
 import { createNode, createConnection } from './schema.js';
@@ -28,37 +22,29 @@ const DEFAULT_FONT_SIZE = 18;
 
 /**
  * Initialize nodes module
- * @param {Object} map - Current map data
- * @param {Object} options - Callbacks
  */
 export function initNodes(map, options = {}) {
     nodesLayer = document.getElementById('nodes-layer');
     currentMap = map;
     onNodeChange = options.onNodeChange;
 
-    // Render all nodes from map
     renderAllNodes();
 
-    // Setup add node button
     document.getElementById('btn-add-node')?.addEventListener('click', () => {
         addNodeAtCenter();
     });
 
-    // Click outside to hide toolbar and deselect
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
             hideAllToolbars();
-            // Deselect node when clicking outside
             if (selectedNodeId && !e.target.closest('.connection-path')) {
                 selectNode(null);
             }
         }
     });
 
-    // Delete selected node with Backspace or Delete key
     document.addEventListener('keydown', (e) => {
         if ((e.key === 'Backspace' || e.key === 'Delete') && selectedNodeId) {
-            // Don't delete if user is editing text
             const active = document.activeElement;
             if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
                 return;
@@ -82,9 +68,7 @@ export function setCurrentMap(map) {
  */
 export function renderAllNodes() {
     nodesLayer.innerHTML = '';
-
     if (!currentMap || !currentMap.nodes) return;
-
     currentMap.nodes.forEach(node => {
         renderNode(node);
     });
@@ -92,7 +76,6 @@ export function renderAllNodes() {
 
 /**
  * Render a single node
- * @param {Object} nodeData - Node data object
  */
 function renderNode(nodeData) {
     const node = document.createElement('div');
@@ -101,10 +84,8 @@ function renderNode(nodeData) {
     node.style.left = `${nodeData.x}px`;
     node.style.top = `${nodeData.y}px`;
 
-    // Get stored font size or use default
     const fontSize = nodeData.fontSize || DEFAULT_FONT_SIZE;
 
-    // Node with animated toolbar
     node.innerHTML = `
     <div class="node-toolbar" data-visible="false">
       <button class="toolbar-btn" data-action="bold" aria-label="Grassetto" title="Grassetto (Ctrl+B)">
@@ -135,9 +116,7 @@ function renderNode(nodeData) {
     <div class="node-handle node-handle-right" data-handle="right"></div>
   `;
 
-    // Setup event listeners
     setupNodeEvents(node, nodeData);
-
     nodesLayer.appendChild(node);
 }
 
@@ -147,79 +126,50 @@ function renderNode(nodeData) {
 function setupNodeEvents(nodeEl, nodeData) {
     const toolbar = nodeEl.querySelector('.node-toolbar');
     const contentEl = nodeEl.querySelector('.node-content');
-    const fontDropdown = nodeEl.querySelector('.font-size-dropdown');
 
-    // Disable default contenteditable behavior - we control it with double-click
     contentEl.setAttribute('contenteditable', 'false');
 
-    // Single click = select and prepare for drag
-    // BUT: not on content area when editing, and not if spacebar held
     nodeEl.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
+        if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.node-handle')) return;
-
-        // If spacebar is held (pan mode), don't start drag - let canvas handle it
         if (window.isSpacePanMode) return;
-
-        // If clicking on content area while in edit mode, don't drag - allow text selection
         if (e.target.closest('.node-content') && contentEl.getAttribute('contenteditable') === 'true') {
-            return; // Let text selection work
+            return;
         }
-
         selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
     });
 
-    // Double click = enter edit mode (if not already editing)
     nodeEl.addEventListener('dblclick', (e) => {
-        if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
+        if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.node-handle')) return;
-
-        // If already in edit mode, let browser handle double-click (word selection)
-        if (contentEl.getAttribute('contenteditable') === 'true') {
-            return; // Browser will select the word automatically
-        }
-
+        if (contentEl.getAttribute('contenteditable') === 'true') return;
         enterEditMode(contentEl, toolbar);
     });
 
-    // Show toolbar on focus (content editing)
     contentEl.addEventListener('focus', () => {
         showToolbar(toolbar);
     });
 
-    // Hide toolbar on blur (with delay for clicking toolbar buttons)
     contentEl.addEventListener('blur', () => {
         setTimeout(() => {
             const active = document.activeElement;
-            // Don't exit if focus went to toolbar or font controls
-            if (active?.closest('.node-toolbar') ||
-                active?.closest('.font-size-dropdown') ||
-                active?.closest('.font-size-input') ||
-                active?.closest('.font-size-control')) {
-                return; // Stay in edit mode
-            }
-
-            // Exit edit mode
+            const toToolbar = active?.closest('.node-toolbar');
+            if (toToolbar && toToolbar.closest('.node') === nodeEl) return;
             hideToolbar(toolbar);
-            hideFontDropdown(fontDropdown);
             contentEl.setAttribute('contenteditable', 'false');
         }, 150);
     });
 
-    // Toolbar buttons (B, I, U, delete)
     toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
         btn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // Prevent blur
+            e.preventDefault();
         });
-
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = btn.dataset.action;
-
             if (action === 'bold' || action === 'italic' || action === 'underline') {
                 applyTextStyle(action);
-                // Update toolbar state immediately
                 updateToolbarState(toolbar, contentEl);
                 contentEl.focus();
             } else if (action === 'delete') {
@@ -228,54 +178,40 @@ function setupNodeEvents(nodeEl, nodeData) {
         });
     });
 
-    // Font size INPUT (manual entry)
+    const fontSizeControl = toolbar.querySelector('.font-size-control');
     const fontInput = toolbar.querySelector('.font-size-input');
-    let savedSelection = null; // Save selection before input focus
+    let savedSelection = null;
 
-    if (fontInput) {
-        // Save selection AND highlight visually BEFORE focus moves to input
-        fontInput.addEventListener('mousedown', (e) => {
-            // We prevent default to stop browser from clearing selection immediately
-            e.preventDefault();
+    if (fontSizeControl && fontInput) {
+        fontSizeControl.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-
             const selection = window.getSelection();
             if (selection.rangeCount > 0 && contentEl.contains(selection.anchorNode) && !selection.isCollapsed) {
-                savedSelection = selection.getRangeAt(0).cloneRange();
+                const existing = contentEl.querySelector('.temp-selection-highlight');
+                if (existing) return;
 
-                // Add visual highlight
+                savedSelection = selection.getRangeAt(0).cloneRange();
                 try {
                     const range = selection.getRangeAt(0);
-                    // Check if we already have a highlight (don't double wrap)
-                    if (range.commonAncestorContainer.parentNode.classList.contains('temp-selection-highlight')) {
-                        return;
-                    }
-
                     const span = document.createElement('span');
                     span.className = 'temp-selection-highlight';
-                    range.surroundContents(span);
+                    const fragment = range.extractContents();
+                    span.appendChild(fragment);
+                    range.insertNode(span);
                 } catch (err) {
-                    // console.log('Cannot highlight complex selection', err);
+                    console.warn('Highlight failed', err);
                 }
             }
-
-            // Now manually move focus to input
-            fontInput.focus();
         });
 
-        // Function to clean up highlight
         const removeHighlight = () => {
             const highlights = contentEl.querySelectorAll('.temp-selection-highlight');
-            if (highlights.length === 0) return;
-
             highlights.forEach(span => {
-                // Unwrap: replace span with its own children
                 while (span.firstChild) {
                     span.parentNode.insertBefore(span.firstChild, span);
                 }
                 span.remove();
             });
-            // Normalize text nodes to merge split text
             contentEl.normalize();
         };
 
@@ -285,13 +221,10 @@ function setupNodeEvents(nodeEl, nodeData) {
                 removeHighlight();
                 setNodeFontSize(nodeEl, nodeData, size, savedSelection);
                 savedSelection = null;
-                // Don't force focus back immediately if we want to keep editing?
-                // Actually usually change means we are done, so yes focus back
                 contentEl.focus();
             }
         });
 
-        // Also remove highlight on blur if no change made
         fontInput.addEventListener('blur', () => {
             setTimeout(() => {
                 removeHighlight();
@@ -312,39 +245,22 @@ function setupNodeEvents(nodeEl, nodeData) {
         });
     }
 
-    // Content editing
     contentEl.addEventListener('input', () => {
         updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
-        // Update connections after content change (size might change)
         updateConnections(currentMap);
     });
 
-    // Keyboard shortcuts
     contentEl.addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey) {
-            if (e.key === 'b') {
-                e.preventDefault();
-                applyTextStyle('bold');
-            } else if (e.key === 'i') {
-                e.preventDefault();
-                applyTextStyle('italic');
-            } else if (e.key === 'u') {
-                e.preventDefault();
-                applyTextStyle('underline');
-            }
+            if (e.key === 'b') { e.preventDefault(); applyTextStyle('bold'); }
+            else if (e.key === 'i') { e.preventDefault(); applyTextStyle('italic'); }
+            else if (e.key === 'u') { e.preventDefault(); applyTextStyle('underline'); }
         }
     });
 
-    // Update toolbar state when selection changes
-    contentEl.addEventListener('mouseup', () => {
-        updateToolbarState(toolbar, contentEl);
-    });
+    contentEl.addEventListener('mouseup', () => updateToolbarState(toolbar, contentEl));
+    contentEl.addEventListener('keyup', () => updateToolbarState(toolbar, contentEl));
 
-    contentEl.addEventListener('keyup', () => {
-        updateToolbarState(toolbar, contentEl);
-    });
-
-    // Connection handles
     nodeEl.querySelectorAll('.node-handle').forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
             e.stopPropagation();
@@ -354,134 +270,76 @@ function setupNodeEvents(nodeEl, nodeData) {
 }
 
 /**
- * Enter edit mode on double-click
+ * Enter edit mode
  */
 function enterEditMode(contentEl, toolbar) {
     contentEl.setAttribute('contenteditable', 'true');
     contentEl.focus();
-
-    // Place cursor at end of content
     const range = document.createRange();
     range.selectNodeContents(contentEl);
     range.collapse(false);
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-
     showToolbar(toolbar);
 }
 
 /**
- * Show toolbar with playful animation
+ * Show toolbar
  */
 function showToolbar(toolbar) {
     const node = toolbar.closest('.node');
-    hideAllToolbars(node); // Keep this node active!
-
+    hideAllToolbars(node);
     toolbar.dataset.visible = 'true';
     activeToolbar = toolbar;
-
-    // Also update toolbar state immediately to reflect current selection
     const contentEl = node?.querySelector('.node-content');
-    if (contentEl) {
-        updateToolbarState(toolbar, contentEl);
-    }
+    if (contentEl) updateToolbarState(toolbar, contentEl);
 }
 
 /**
- * Hide toolbar with animation
+ * Hide toolbar
  */
 function hideToolbar(toolbar) {
+    if (!toolbar) return;
     toolbar.dataset.visible = 'false';
-    if (activeToolbar === toolbar) {
-        activeToolbar = null;
-    }
+    if (activeToolbar === toolbar) activeToolbar = null;
 }
 
 /**
  * Hide all toolbars
  */
-/**
- * Hide all toolbars AND disable editing
- */
-/**
- * Hide all toolbars AND disable editing (except for excluded node)
- * @param {HTMLElement} [excludeNode] - Node to keep active
- */
 function hideAllToolbars(excludeNode = null) {
     document.querySelectorAll('.node-toolbar[data-visible="true"]').forEach(t => {
         const node = t.closest('.node');
-
-        // Skip if this is the node we want to keep active
         if (excludeNode && node === excludeNode) return;
-
         t.dataset.visible = 'false';
-
-        // Disable editing for this node
         if (node) {
             const content = node.querySelector('.node-content');
             if (content) content.setAttribute('contenteditable', 'false');
         }
     });
-
-    // Safety check check: disable editing on other nodes (but NOT the excluded one)
     document.querySelectorAll('.node-content[contenteditable="true"]').forEach(el => {
         const node = el.closest('.node');
         if (excludeNode && node === excludeNode) return;
-
         el.setAttribute('contenteditable', 'false');
     });
-
-    if (!excludeNode) {
-        activeToolbar = null;
-    }
+    if (!excludeNode) activeToolbar = null;
 }
 
 /**
- * Toggle font size dropdown
- */
-function toggleFontDropdown(dropdown) {
-    dropdown.dataset.visible = dropdown.dataset.visible === 'true' ? 'false' : 'true';
-}
-
-/**
- * Hide font dropdown
- */
-function hideFontDropdown(dropdown) {
-    dropdown.dataset.visible = 'false';
-}
-
-/**
- * Set font size - applies to SELECTED text or entire node
- */
-/**
- * Set font size - applies to SELECTED text or entire node
- * @param {HTMLElement} nodeEl
- * @param {Object} nodeData
- * @param {number} size
- * @param {Range} [explicitRange] - Optional range to force selection
+ * Set font size
  */
 function setNodeFontSize(nodeEl, nodeData, size, explicitRange = null) {
     const contentEl = nodeEl.querySelector('.node-content');
-    const dropdown = nodeEl.querySelector('.font-size-dropdown');
-
-    // Use explicit range if provided, otherwise current selection
     let range = explicitRange;
     let hasSelection = !!explicitRange;
 
     if (!hasSelection) {
         const selection = window.getSelection();
-        hasSelection = selection &&
-            selection.rangeCount > 0 &&
-            !selection.isCollapsed &&
-            contentEl.contains(selection.anchorNode);
-
-        if (hasSelection) {
-            range = selection.getRangeAt(0);
-        }
+        hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed && contentEl.contains(selection.anchorNode);
+        if (hasSelection) range = selection.getRangeAt(0);
     }
 
-    // Safety check: verify range is actually within contentEl
     if (hasSelection && range) {
         if (!contentEl.contains(range.commonAncestorContainer) && range.commonAncestorContainer !== contentEl) {
             hasSelection = false;
@@ -489,112 +347,69 @@ function setNodeFontSize(nodeEl, nodeData, size, explicitRange = null) {
     }
 
     if (hasSelection && range) {
-        // Apply font size to SELECTED text only using a span
-
-        // Create a span with the new font size
         const span = document.createElement('span');
         span.style.fontSize = `${size}px`;
-
-        // Extract selection and wrap in span
         try {
             const fragment = range.extractContents();
             span.appendChild(fragment);
             range.insertNode(span);
-
-            // Re-select the text
             const selection = window.getSelection();
             selection.removeAllRanges();
             const newRange = document.createRange();
             newRange.selectNodeContents(span);
             selection.addRange(newRange);
         } catch (e) {
-            // Fallback: apply to entire node
             console.error('Font resize error', e);
             contentEl.style.fontSize = `${size}px`;
         }
     } else {
-        // No selection = apply to entire node
         contentEl.style.fontSize = `${size}px`;
-        // Also save as default for this node
         updateNodeField(nodeData.id, 'fontSize', size);
     }
-
-    // Update button display handled by inputs
-
-
-    // Update active state
-    dropdown.querySelectorAll('.font-size-option').forEach(opt => {
-        opt.classList.toggle('active', parseInt(opt.dataset.size) === size);
-    });
-
-    // Update connections (node size may have changed)
     updateConnections(currentMap);
 }
 
 /**
- * Apply text style to selected text
+ * Apply style
  */
 function applyTextStyle(style) {
     document.execCommand(style, false, null);
 }
 
 /**
- * Update toolbar button states based on current selection
- * Shows if text is bold, italic, underlined, and its font size
+ * Update toolbar button states
  */
 function updateToolbarState(toolbar, contentEl) {
     if (!toolbar) return;
-
-    // Check formatting state using queryCommandState
     const isBold = document.queryCommandState('bold');
     const isItalic = document.queryCommandState('italic');
     const isUnderline = document.queryCommandState('underline');
 
-    // Update button active states
-    const boldBtn = toolbar.querySelector('[data-action="bold"]');
-    const italicBtn = toolbar.querySelector('[data-action="italic"]');
-    const underlineBtn = toolbar.querySelector('[data-action="underline"]');
+    toolbar.querySelector('[data-action="bold"]')?.classList.toggle('active', isBold);
+    toolbar.querySelector('[data-action="italic"]')?.classList.toggle('active', isItalic);
+    toolbar.querySelector('[data-action="underline"]')?.classList.toggle('active', isUnderline);
 
-    boldBtn?.classList.toggle('active', isBold);
-    italicBtn?.classList.toggle('active', isItalic);
-    underlineBtn?.classList.toggle('active', isUnderline);
-
-    // Try to get font size of current selection
     const selection = window.getSelection();
     if (selection.rangeCount > 0 && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
         let container = range.commonAncestorContainer;
-
-        // Get the element (not text node)
-        if (container.nodeType === Node.TEXT_NODE) {
-            container = container.parentElement;
-        }
-
-        // Find font size
+        if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
         const fontSize = window.getComputedStyle(container).fontSize;
         const sizeNum = parseInt(fontSize);
-
-        // Update font size INPUT
         const fontInput = toolbar.querySelector('.font-size-input');
-        if (fontInput && sizeNum) {
-            fontInput.value = sizeNum;
-        }
+        if (fontInput && sizeNum) fontInput.value = sizeNum;
     }
 }
 
 /**
- * Start dragging a node
+ * Start dragging
  */
 function startDrag(e, nodeEl, nodeData) {
-    // Cancel any existing drag first
     if (dragState) {
-        const prevEl = document.getElementById(dragState.nodeId);
-        prevEl?.classList.remove('dragging');
+        document.getElementById(dragState.nodeId)?.classList.remove('dragging');
     }
-
     const currentX = parseFloat(nodeEl.style.left) || nodeData.x;
     const currentY = parseFloat(nodeEl.style.top) || nodeData.y;
-
     dragState = {
         nodeId: nodeData.id,
         startX: e.clientX,
@@ -602,52 +417,31 @@ function startDrag(e, nodeEl, nodeData) {
         nodeStartX: currentX,
         nodeStartY: currentY
     };
-
     nodeEl.classList.add('dragging');
-
-    const onMouseMove = (moveEvent) => {
+    const onMouseMove = (me) => {
         if (!dragState) return;
-
-        // ALWAYS get the element by ID to avoid stale references
         const el = document.getElementById(dragState.nodeId);
         if (!el) return;
-
         const { scale } = window.canvasTransform || { scale: 1 };
-        const dx = (moveEvent.clientX - dragState.startX) / scale;
-        const dy = (moveEvent.clientY - dragState.startY) / scale;
-
-        const newX = dragState.nodeStartX + dx;
-        const newY = dragState.nodeStartY + dy;
-
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
-
+        const dx = (me.clientX - dragState.startX) / scale;
+        const dy = (me.clientY - dragState.startY) / scale;
+        el.style.left = `${dragState.nodeStartX + dx}px`;
+        el.style.top = `${dragState.nodeStartY + dy}px`;
         updateConnections(currentMap);
     };
-
-    const onMouseUp = (upEvent) => {
+    const onMouseUp = (ue) => {
         if (!dragState) return;
-
-        // ALWAYS get the element by ID
         const el = document.getElementById(dragState.nodeId);
-
         const { scale } = window.canvasTransform || { scale: 1 };
-        const dx = (upEvent.clientX - dragState.startX) / scale;
-        const dy = (upEvent.clientY - dragState.startY) / scale;
-
-        const newX = dragState.nodeStartX + dx;
-        const newY = dragState.nodeStartY + dy;
-
-        updateNodeField(dragState.nodeId, 'x', Math.round(newX));
-        updateNodeField(dragState.nodeId, 'y', Math.round(newY));
-
+        const dx = (ue.clientX - dragState.startX) / scale;
+        const dy = (ue.clientY - dragState.startY) / scale;
+        updateNodeField(dragState.nodeId, 'x', Math.round(dragState.nodeStartX + dx));
+        updateNodeField(dragState.nodeId, 'y', Math.round(dragState.nodeStartY + dy));
         el?.classList.remove('dragging');
         dragState = null;
-
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     };
-
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 }
@@ -656,51 +450,26 @@ function startDrag(e, nodeEl, nodeData) {
  * Select a node
  */
 export function selectNode(nodeId) {
-    if (selectedNodeId) {
-        document.getElementById(selectedNodeId)?.classList.remove('selected');
-    }
-
+    if (selectedNodeId) document.getElementById(selectedNodeId)?.classList.remove('selected');
     selectedNodeId = nodeId;
-
-    if (nodeId) {
-        document.getElementById(nodeId)?.classList.add('selected');
-    }
+    if (nodeId) document.getElementById(nodeId)?.classList.add('selected');
 }
 
 /**
- * Add a new node at canvas center
+ * Add node at center
  */
 export function addNodeAtCenter() {
     if (!currentMap) return;
-
     const container = document.getElementById('canvas-container');
     const rect = container.getBoundingClientRect();
-    const center = screenToCanvas(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2
-    );
-
+    const center = screenToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2);
     const hasMain = currentMap.nodes.some(n => n.type === 'main');
     const type = !hasMain ? 'main' : 'secondary';
-
-    const node = createNode({
-        type,
-        content: '',
-        fontSize: DEFAULT_FONT_SIZE,
-        x: Math.round(center.x),
-        y: Math.round(center.y)
-    });
-
+    const node = createNode({ type, content: '', fontSize: DEFAULT_FONT_SIZE, x: Math.round(center.x), y: Math.round(center.y) });
     currentMap.nodes.push(node);
     renderNode(node);
     selectNode(node.id);
-
-    setTimeout(() => {
-        const contentEl = document.querySelector(`#${node.id} .node-content`);
-        contentEl?.focus();
-    }, 50);
-
-    onNodeChange?.();
+    setTimeout(() => { document.querySelector(`#${node.id} .node-content`)?.focus(); }, 50);
 }
 
 /**
@@ -708,21 +477,12 @@ export function addNodeAtCenter() {
  */
 export function deleteNode(nodeId) {
     if (!currentMap) return;
-
     const index = currentMap.nodes.findIndex(n => n.id === nodeId);
     if (index === -1) return;
-
     currentMap.nodes.splice(index, 1);
-    currentMap.connections = currentMap.connections.filter(
-        c => c.from !== nodeId && c.to !== nodeId
-    );
-
+    currentMap.connections = currentMap.connections.filter(c => c.from !== nodeId && c.to !== nodeId);
     document.getElementById(nodeId)?.remove();
-
-    if (selectedNodeId === nodeId) {
-        selectedNodeId = null;
-    }
-
+    if (selectedNodeId === nodeId) selectedNodeId = null;
     updateConnections(currentMap);
     onNodeChange?.();
 }
@@ -732,7 +492,6 @@ export function deleteNode(nodeId) {
  */
 function updateNodeField(nodeId, field, value) {
     if (!currentMap) return;
-
     const node = currentMap.nodes.find(n => n.id === nodeId);
     if (node) {
         node[field] = value;
@@ -741,53 +500,36 @@ function updateNodeField(nodeId, field, value) {
 }
 
 /**
- * Start creating a connection with live preview
- * If dropped on empty space, can delete existing connections
+ * Start connection
  */
 function startConnection(fromNodeId) {
     const container = document.getElementById('canvas-container');
     container.classList.add('connecting');
-
-    // Import and start preview
-    import('./connections.js').then(({ startConnectionPreview, endConnectionPreview, deleteConnectionsFromNode }) => {
+    import('./connections.js').then(({ startConnectionPreview, endConnectionPreview }) => {
         startConnectionPreview(fromNodeId);
-
         const onMouseUp = (e) => {
             container.classList.remove('connecting');
             endConnectionPreview();
-
             const target = e.target.closest('.node-handle') || e.target.closest('.node');
             if (target) {
                 const toNodeEl = target.closest('.node');
-                if (toNodeEl && toNodeEl.id !== fromNodeId) {
-                    createNodeConnection(fromNodeId, toNodeEl.id);
-                }
+                if (toNodeEl && toNodeEl.id !== fromNodeId) createNodeConnection(fromNodeId, toNodeEl.id);
             }
-            // Dropped on empty space - could delete connections (optional feature)
-            // For now, just cancel the operation
-
             document.removeEventListener('mouseup', onMouseUp);
         };
-
         document.addEventListener('mouseup', onMouseUp);
     });
 }
 
 /**
- * Create a connection between two nodes
+ * Create connection
  */
 function createNodeConnection(fromId, toId) {
     if (!currentMap) return;
-
-    const exists = currentMap.connections.some(
-        c => (c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId)
-    );
-
+    const exists = currentMap.connections.some(c => (c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId));
     if (exists) return;
-
     const connection = createConnection(fromId, toId);
     currentMap.connections.push(connection);
-
     updateConnections(currentMap);
     onNodeChange?.();
 }

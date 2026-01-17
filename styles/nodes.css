@@ -76,7 +76,8 @@
     border-width: 2px;
 }
 
-/* .node.node-secondary handled by default .node */
+/* Secondary type nodes */
+/* .node.node-secondary {} */
 
 /* =====================================================
    NODE CONTENT – 18pt default
@@ -248,17 +249,14 @@
     text-align: center;
     outline: none;
     transition: border-color 0.15s, background 0.15s;
-    -webkit-appearance: textfield;
-    -moz-appearance: textfield;
     appearance: textfield;
-    /* Standard property */
+    -moz-appearance: textfield;
     /* Hide spinner Firefox */
 }
 
 .font-size-input::-webkit-inner-spin-button,
 .font-size-input::-webkit-outer-spin-button {
     -webkit-appearance: none;
-    appearance: none;
     margin: 0;
 }
 
