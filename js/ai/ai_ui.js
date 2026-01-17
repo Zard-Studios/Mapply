@@ -292,10 +292,10 @@ async function createMapFromAI(mapData) {
         childrenOf.get(conn.from).push(conn.to);
     });
 
-    // Layout constants - MORE SPACING!
-    const nodeWidth = 220;
-    const horizontalSpacing = 350; // Was 280
-    const verticalSpacing = 200;   // Was 150
+    // Layout constants - MUCH MORE SPACING!
+    const nodeWidth = 240;
+    const horizontalSpacing = 450; // Was 350
+    const verticalSpacing = 250;   // Was 200
 
     // LEVEL 1: Main node at top center
     if (mainNode) {
@@ -338,7 +338,7 @@ async function createMapFromAI(mapData) {
             const childData = childNodes.find(n => n.id === childId);
             if (!childData) return;
 
-            const childY = secondaryY + verticalSpacing + childIndex * 160; // Was 120
+            const childY = secondaryY + verticalSpacing + childIndex * 200; // Was 160
             const newNode = createNode({
                 content: parseMarkdownToHTML(childData.content),
                 type: 'child',
