@@ -47,6 +47,12 @@ async function init() {
         initCanvas({
             onTransformChange: (transform) => {
                 window.canvasTransform = transform;
+                // Update connections after DOM settles
+                requestAnimationFrame(() => {
+                    if (currentMap) {
+                        updateConnections(currentMap);
+                    }
+                });
             }
         });
 

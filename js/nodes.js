@@ -139,19 +139,24 @@ function setupNodeEvents(nodeEl, nodeData) {
     const contentEl = nodeEl.querySelector('.node-content');
     const fontDropdown = nodeEl.querySelector('.font-size-dropdown');
 
-    // Selection and drag start
+    // Disable default contenteditable behavior - we control it with double-click
+    contentEl.setAttribute('contenteditable', 'false');
+
+    // Single click = select and prepare for drag
     nodeEl.addEventListener('mousedown', (e) => {
         if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
         if (e.target.closest('.node-handle')) return;
 
         selectNode(nodeData.id);
-
-        // Don't start drag if clicking contenteditable
-        if (e.target.contentEditable === 'true') {
-            return;
-        }
-
         startDrag(e, nodeEl, nodeData);
+    });
+
+    // Double click = enter edit mode
+    nodeEl.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
+        if (e.target.closest('.node-handle')) return;
+
+        enterEditMode(contentEl, toolbar);
     });
 
     // Show toolbar on focus (content editing)
@@ -166,6 +171,8 @@ function setupNodeEvents(nodeEl, nodeData) {
                 !document.activeElement?.closest('.font-size-dropdown')) {
                 hideToolbar(toolbar);
                 hideFontDropdown(fontDropdown);
+                // Exit edit mode
+                contentEl.setAttribute('contenteditable', 'false');
             }
         }, 150);
     });
@@ -236,6 +243,24 @@ function setupNodeEvents(nodeEl, nodeData) {
             startConnection(nodeData.id);
         });
     });
+}
+
+/**
+ * Enter edit mode on double-click
+ */
+function enterEditMode(contentEl, toolbar) {
+    contentEl.setAttribute('contenteditable', 'true');
+    contentEl.focus();
+
+    // Place cursor at end of content
+    const range = document.createRange();
+    range.selectNodeContents(contentEl);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    showToolbar(toolbar);
 }
 
 /**

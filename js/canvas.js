@@ -188,8 +188,9 @@ function applyTransform() {
     const transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
     nodesLayer.style.transform = transform;
 
-    // SVG connections need special handling
-    connectionsLayer.style.transform = transform;
+    // SVG connections layer stays UNTRANSFORMED
+    // Connections will be calculated in screen space
+    // connectionsLayer.style.transform = transform; // REMOVED - causes double transform
 
     if (onTransformChange) {
         onTransformChange({ scale, offsetX, offsetY });
