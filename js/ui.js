@@ -136,6 +136,12 @@ export function onMapTitleChange(onChange) {
                 titleEl.blur();
             }
         });
+
+        // Live update while typing
+        titleEl.addEventListener('input', () => {
+            const newTitle = titleEl.textContent.trim() || 'Nuova Mappa';
+            onChange(newTitle);
+        });
     }
 }
 
@@ -159,6 +165,7 @@ export function renderMapList(maps, activeId, callbacks) {
     maps.forEach(map => {
         const li = document.createElement('li');
         li.className = `map-list-item ${map.id === activeId ? 'active' : ''}`;
+        li.dataset.id = map.id; // Add data-id for easy lookup
         li.innerHTML = `
       <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/>
@@ -202,4 +209,20 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Update the title of a specific map in the sidebar list (Optimistic UI)
+ */
+export function updateSidebarMapTitle(mapId, newTitle) {
+    const listEl = document.getElementById('map-list');
+    if (!listEl) return;
+
+    const item = listEl.querySelector(`.map-list-item[data-id="${mapId}"]`);
+    if (item) {
+        const titleSpan = item.querySelector('.map-list-item-title');
+        if (titleSpan) {
+            titleSpan.textContent = newTitle;
+        }
+    }
 }

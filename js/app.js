@@ -23,7 +23,8 @@ import {
     setMapTitle,
     getMapTitle,
     onMapTitleChange,
-    renderMapList
+    renderMapList,
+    updateSidebarMapTitle
 } from './ui.js';
 import { isAIEnabled, generateMapFromText } from './aiAdapter.js';
 import { history } from './history.js';
@@ -252,15 +253,16 @@ function cancelAutoSave() {
  */
 function setupEventListeners() {
     // Title change
+    // Title change
     onMapTitleChange((newTitle) => {
         if (currentMap) {
             currentMap.title = newTitle;
-            scheduleAutoSave();
 
-            // Update map list
-            getAllMaps().then(maps => {
-                renderMapList(maps, currentMap.id, { onSelect: switchToMap, onDelete: handleDeleteMap });
-            });
+            // Real-time optimistic update of the sidebar
+            updateSidebarMapTitle(currentMap.id, newTitle);
+
+            // Debounced save
+            scheduleAutoSave();
         }
     });
 
