@@ -188,6 +188,34 @@ async function createNewMap() {
  * Handle map deletion
  */
 async function handleDeleteMap(mapId) {
+    const maps = await getAllMaps();
+
+    // CASE 1: Deleting the LAST remaining map
+    if (maps.length === 1 && maps[0].id === mapId) {
+        if (currentMap && currentMap.id === mapId) {
+            cancelAutoSave();
+
+            // Reset content
+            currentMap.title = 'Nuova Mappa';
+            currentMap.nodes = [];
+            currentMap.connections = [];
+
+            // Save and update UI immediately
+            await saveMap(currentMap);
+
+            setMapTitle(currentMap.title);
+            renderAllNodes();
+            updateConnections(currentMap);
+
+            // Refresh sidebar to show new name
+            renderMapList([currentMap], currentMap.id, { onSelect: switchToMap, onDelete: handleDeleteMap });
+
+            showToast('Mappa resettata');
+            return;
+        }
+    }
+
+    // CASE 2: Normal deletion
     // If deleting the current map, cancel any pending auto-saves to prevent resurrection
     if (currentMap && currentMap.id === mapId) {
         cancelAutoSave();
@@ -197,18 +225,18 @@ async function handleDeleteMap(mapId) {
 
     // If we deleted the current map, switch to another
     if (currentMap && currentMap.id === mapId) {
-        const maps = await getAllMaps();
-        if (maps.length > 0) {
-            setActiveMap(maps[0]);
-            renderMapList(maps, maps[0].id, { onSelect: switchToMap, onDelete: handleDeleteMap });
+        const remainingMaps = await getAllMaps();
+        if (remainingMaps.length > 0) {
+            setActiveMap(remainingMaps[0]);
+            renderMapList(remainingMaps, remainingMaps[0].id, { onSelect: switchToMap, onDelete: handleDeleteMap });
         } else {
-            // Create a new map if none left
+            // Should be covered by Case 1, but failsafe:
             await createNewMap();
         }
     } else {
         // Just refresh the list
-        const maps = await getAllMaps();
-        renderMapList(maps, currentMap?.id, { onSelect: switchToMap, onDelete: handleDeleteMap });
+        const remainingMaps = await getAllMaps();
+        renderMapList(remainingMaps, currentMap?.id, { onSelect: switchToMap, onDelete: handleDeleteMap });
     }
 
     showToast('Mappa eliminata');
