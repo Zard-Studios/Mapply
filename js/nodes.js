@@ -1293,6 +1293,29 @@ export function addNodeAtLocation(x, y, animate = true) {
 }
 
 /**
+ * Add a pre-created node to the map (used by AI generation)
+ */
+export function addNodeToMap(node) {
+    if (!currentMap) return;
+    currentMap.nodes.push(node);
+}
+
+/**
+ * Add a pre-created connection to the map (used by AI generation)
+ */
+export function addConnectionToMap(connection) {
+    if (!currentMap) return;
+    // Check if connection already exists
+    const exists = currentMap.connections.some(c =>
+        (c.from === connection.from && c.to === connection.to) ||
+        (c.from === connection.to && c.to === connection.from)
+    );
+    if (!exists) {
+        currentMap.connections.push(connection);
+    }
+}
+
+/**
  * Delete a node
  */
 export function deleteNode(nodeId) {

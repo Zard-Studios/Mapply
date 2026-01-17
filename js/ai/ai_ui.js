@@ -99,22 +99,22 @@ function setupAIPanel() {
         const loadingId = appendMessage('system', 'Sto pensando...', true);
 
         try {
-            // Check for commands (simplistic for now)
-            let prompt = text;
-
             // Call AI Service
-            // We'll implement a proper message history later if needed
-            // For now, simpler one-shot contexts
             const response = await aiService.generateCompletion([
-                { role: 'user', content: prompt }
+                { role: 'user', content: text }
             ]);
 
-            // Update loading message with response
-            updateMessage(loadingId, response);
+            // Try to parse JSON from response
+            const mapData = extractMapJSON(response);
 
-            // Try to parse JSON actions?
-            // This is where "sophisticated" logic comes in.
-            // For now, raw text.
+            if (mapData && mapData.nodes && mapData.nodes.length > 0) {
+                // Create nodes on the canvas!
+                const result = await createMapFromAI(mapData);
+                updateMessage(loadingId, `✨ Ho creato ${result.nodesCreated} nodi sulla mappa!`);
+            } else {
+                // No JSON found, just show the text response
+                updateMessage(loadingId, response);
+            }
 
         } catch (error) {
             updateMessage(loadingId, `Errore: ${error.message}`, true);
@@ -220,4 +220,102 @@ async function fetchAndPopulateModels(selectElement, currentModel) {
         `;
         if (currentModel) selectElement.value = currentModel;
     }
+}
+
+/**
+ * Extract JSON map data from AI response text
+ * Looks for ```json ... ``` blocks or raw JSON objects
+ */
+function extractMapJSON(text) {
+    // Try to find JSON in code block
+    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch) {
+        try {
+            return JSON.parse(codeBlockMatch[1]);
+        } catch (e) {
+            console.warn('Failed to parse JSON from code block:', e);
+        }
+    }
+
+    // Try to find raw JSON object
+    const jsonMatch = text.match(/\{[\s\S]*"nodes"[\s\S]*\}/);
+    if (jsonMatch) {
+        try {
+            return JSON.parse(jsonMatch[0]);
+        } catch (e) {
+            console.warn('Failed to parse raw JSON:', e);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Create nodes and connections on the canvas from AI-generated data
+ */
+async function createMapFromAI(mapData) {
+    const { createNode, createConnection } = await import('../schema.js');
+    const nodesModule = await import('../nodes.js');
+
+    const idMapping = new Map(); // AI ID -> Real ID
+    let nodesCreated = 0;
+
+    // Calculate starting position (center of viewport, then spread out)
+    const canvas = document.getElementById('viewport');
+    const rect = canvas?.getBoundingClientRect() || { width: 800, height: 600 };
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Layout nodes in a radial pattern from center
+    const totalNodes = mapData.nodes.length;
+    const mainNode = mapData.nodes.find(n => n.type === 'main');
+    const childNodes = mapData.nodes.filter(n => n.type !== 'main');
+
+    // Create main node at center
+    if (mainNode) {
+        const newNode = createNode({
+            content: mainNode.content,
+            type: 'main',
+            x: centerX - 80,
+            y: centerY - 40
+        });
+        idMapping.set(mainNode.id, newNode.id);
+        nodesModule.addNodeToMap(newNode);
+        nodesCreated++;
+    }
+
+    // Create child nodes in a circle around main
+    const radius = 200;
+    childNodes.forEach((node, i) => {
+        const angle = (i / childNodes.length) * 2 * Math.PI - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle) - 80;
+        const y = centerY + radius * Math.sin(angle) - 40;
+
+        const newNode = createNode({
+            content: node.content,
+            type: 'child',
+            x: x,
+            y: y
+        });
+        idMapping.set(node.id, newNode.id);
+        nodesModule.addNodeToMap(newNode);
+        nodesCreated++;
+    });
+
+    // Create connections
+    if (mapData.connections) {
+        mapData.connections.forEach(conn => {
+            const fromId = idMapping.get(conn.from);
+            const toId = idMapping.get(conn.to);
+            if (fromId && toId) {
+                const connection = createConnection(fromId, toId);
+                nodesModule.addConnectionToMap(connection);
+            }
+        });
+    }
+
+    // Render everything
+    nodesModule.renderAllNodes();
+
+    return { nodesCreated };
 }
