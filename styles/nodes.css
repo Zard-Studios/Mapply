@@ -14,7 +14,7 @@
     position: absolute;
     min-width: 40px;
     max-width: 360px;
-    width: fit-content;
+    width: max-content;
     padding: var(--spacing-sm) var(--spacing-md);
 
     /* Glass effect */
