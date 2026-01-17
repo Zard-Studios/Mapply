@@ -20,7 +20,9 @@ function setupSettingsModal() {
 
     // Load saved values
     inputKey.value = aiService.getApiKey();
-    selectModel.value = aiService.getModel();
+
+    // Fetch models from OpenRouter
+    fetchAndPopulateModels(selectModel, aiService.getModel());
 
     // Toggle Modal
     btnSettings.addEventListener('click', () => {
@@ -154,4 +156,68 @@ function updateMessage(id, text, isError = false) {
 function formatText(text) {
     // Basic newline to br
     return text.replace(/\n/g, '<br>');
+}
+
+/**
+ * Fetch all available models from OpenRouter and populate the select dropdown
+ */
+async function fetchAndPopulateModels(selectElement, currentModel) {
+    // Show loading state
+    selectElement.innerHTML = '<option value="">Caricamento modelli...</option>';
+
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/models');
+        if (!response.ok) throw new Error('Failed to fetch models');
+
+        const data = await response.json();
+        const models = data.data || [];
+
+        // Sort by name
+        models.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Clear and populate
+        selectElement.innerHTML = '';
+
+        // Group by provider (first part of id before /)
+        const grouped = {};
+        models.forEach(model => {
+            const provider = model.id.split('/')[0];
+            if (!grouped[provider]) grouped[provider] = [];
+            grouped[provider].push(model);
+        });
+
+        // Create optgroups
+        Object.keys(grouped).sort().forEach(provider => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider.charAt(0).toUpperCase() + provider.slice(1);
+
+            grouped[provider].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                // Format: Name (Context Length) - Pricing indicator
+                const contextK = model.context_length ? Math.round(model.context_length / 1000) + 'k' : '';
+                const pricing = model.pricing?.prompt === '0' ? '🆓' : '';
+                option.textContent = `${model.name} ${contextK ? `(${contextK})` : ''} ${pricing}`.trim();
+                optgroup.appendChild(option);
+            });
+
+            selectElement.appendChild(optgroup);
+        });
+
+        // Set current value
+        if (currentModel) {
+            selectElement.value = currentModel;
+        }
+
+    } catch (error) {
+        console.error('Failed to load models:', error);
+        // Fallback to static list
+        selectElement.innerHTML = `
+            <option value="google/gemini-flash-1.5">Gemini Flash 1.5</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+            <option value="meta-llama/llama-3-8b-instruct">Llama 3 8B</option>
+        `;
+        if (currentModel) selectElement.value = currentModel;
+    }
 }
