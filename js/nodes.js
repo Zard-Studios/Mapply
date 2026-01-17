@@ -540,12 +540,19 @@ function setNodeAlignment(nodeEl, nodeData, alignment) {
     // 1. Check for visual highlight (fake selection)
     const highlight = contentEl.querySelector('.temp-selection-highlight');
     if (highlight) {
-        highlight.style.display = 'block';
-        highlight.style.textAlign = alignment;
+        // Alignment applies to blocks, not inline spans. 
+        // We shouldn't set display:block on the span as it breaks layout.
+        // Instead, select the span contents and let execCommand align the parent block.
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(highlight);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        // Remove the highlight class so it doesn't get stuck
         highlight.classList.remove('temp-selection-highlight');
-        updateConnections(currentMap);
-        updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
-        return;
+        // Let legacy clean up unwrapping if needed, or execCommand might handle it.
+        // Proceed to use execCommand below...
     }
 
     // 2. Fallback to real selection
