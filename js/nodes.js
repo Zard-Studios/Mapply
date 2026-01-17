@@ -207,10 +207,17 @@ function setupNodeEvents(nodeEl, nodeData) {
         const removeHighlight = () => {
             const highlights = contentEl.querySelectorAll('.temp-selection-highlight');
             highlights.forEach(span => {
-                while (span.firstChild) {
-                    span.parentNode.insertBefore(span.firstChild, span);
+                // If the span has actual styling (like a font size we just set), 
+                // we keep it as a formatting span but remove the highlight class.
+                if (span.style.fontSize) {
+                    span.classList.remove('temp-selection-highlight');
+                } else {
+                    // It was just a temporary placeholder for focus, unwrap it
+                    while (span.firstChild) {
+                        span.parentNode.insertBefore(span.firstChild, span);
+                    }
+                    span.remove();
                 }
-                span.remove();
             });
             contentEl.normalize();
         };
@@ -226,8 +233,13 @@ function setupNodeEvents(nodeEl, nodeData) {
 
         fontInput.addEventListener('blur', () => {
             setTimeout(() => {
-                removeHighlight();
-            }, 100);
+                // When we blur the input, we finally "commit" the highlight or remove it
+                const highlights = contentEl.querySelectorAll('.temp-selection-highlight');
+                highlights.forEach(span => {
+                    span.classList.remove('temp-selection-highlight');
+                });
+                removeHighlight(); // Unwrap those spans if they are just placeholders
+            }, 150);
         });
 
         fontInput.addEventListener('keydown', (e) => {
@@ -333,7 +345,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     const highlight = contentEl.querySelector('.temp-selection-highlight');
     if (highlight) {
         highlight.style.fontSize = `${size}px`;
-        highlight.classList.remove('temp-selection-highlight');
+        // Don't remove the class here! We want to keep updating it if the user keeps typing in the input
         updateConnections(currentMap);
         onNodeChange?.();
         return;
