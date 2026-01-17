@@ -251,6 +251,19 @@ function extractMapJSON(text) {
 }
 
 /**
+ * Parse markdown-style formatting to HTML
+ * Supports **bold** and *italic*
+ */
+function parseMarkdownToHTML(text) {
+    if (!text) return text;
+    // Bold: **text** -> <strong>text</strong>
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text* -> <em>text</em> (but not if already part of bold)
+    text = text.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+    return text;
+}
+
+/**
  * Create nodes and connections on the canvas from AI-generated data
  * Uses HIERARCHICAL TOP-DOWN layout
  */
@@ -287,7 +300,7 @@ async function createMapFromAI(mapData) {
     // LEVEL 1: Main node at top center
     if (mainNode) {
         const newNode = createNode({
-            content: mainNode.content,
+            content: parseMarkdownToHTML(mainNode.content),
             type: 'main',
             x: startX - nodeWidth / 2,
             y: startY
@@ -306,7 +319,7 @@ async function createMapFromAI(mapData) {
     secondaryNodes.forEach((node, i) => {
         const x = secondaryStartX + i * horizontalSpacing - nodeWidth / 2;
         const newNode = createNode({
-            content: node.content,
+            content: parseMarkdownToHTML(node.content),
             type: 'secondary',
             x: x,
             y: secondaryY
@@ -327,7 +340,7 @@ async function createMapFromAI(mapData) {
 
             const childY = secondaryY + verticalSpacing + childIndex * 120;
             const newNode = createNode({
-                content: childData.content,
+                content: parseMarkdownToHTML(childData.content),
                 type: 'child',
                 x: secX,
                 y: childY
