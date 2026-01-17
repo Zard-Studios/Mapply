@@ -206,24 +206,23 @@ function setupNodeEvents(nodeEl, nodeData) {
             e.preventDefault();
         }
 
-        // If clicking a node that is NOT in the current selection set,
-        // we should select it (and clear others) unless shift is held.
-        // But startDrag handles the "add to selection" logic if Shift is held.
-        // We just need to make sure we don't accidentally clear the multi-selection 
-        // if we are simply clicking to drag a pre-selected group.
+        // Multi-Selection Logic (Standard Behavior)
+        const isMultiSelect = e.shiftKey || e.metaKey || e.ctrlKey;
 
-        let shouldSelect = true;
-        if (selectedNodeIds.has(nodeData.id) && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-            // It's already selected. Don't re-select (which would clear others),
-            // unless we mouseUp without dragging (which is a click).
-            // But 'selectNode' clears immediately.
-            // So we skip 'selectNode' here and let startDrag handle the group move.
-            shouldSelect = false;
-            selectedNodeId = nodeData.id; // Update primary focus though
-        }
-
-        if (shouldSelect) {
-            selectNode(nodeData.id);
+        if (isMultiSelect) {
+            // Modifier held: Toggle selection. 
+            // startDrag will respect the new state.
+            toggleSelection(nodeData.id);
+        } else {
+            // No modifier:
+            if (!selectedNodeIds.has(nodeData.id)) {
+                // New selection: Clear others and select this one.
+                selectNode(nodeData.id);
+            } else {
+                // Already selected: Don't clear others (allows dragging the group).
+                // Just ensure this is the primary focus.
+                selectedNodeId = nodeData.id;
+            }
         }
 
         startDrag(e, nodeEl, nodeData);
@@ -781,22 +780,13 @@ function updateToolbarState(toolbar, contentEl) {
 /**
  * Start dragging
  */
-/**
- * Start dragging
- */
 function startDrag(e, nodeEl, nodeData) {
     if (dragState) return;
 
-    // Multi-selection logic: 
-    // If the node we are dragging is NOT in the selection, select IT and clear others (unless modifier)
-    if (!selectedNodeIds.has(nodeData.id)) {
-        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-            selectNode(nodeData.id);
-        } else {
-            toggleSelection(nodeData.id);
-        }
-    }
-    // If it IS in the selection, we leave the selection as is (allows moving the group)
+    // Selection logic logic removed - handled in mousedown
+
+    // If the node is not selected (e.g. we just deselected it via Shift-click), don't drag it
+    if (!selectedNodeIds.has(nodeData.id)) return;
 
     // Calculate initial offsets for ALL selected nodes
     const initialPositions = new Map();
