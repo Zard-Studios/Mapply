@@ -2,7 +2,7 @@
  * connections.js – SVG curve connections between nodes
  * FigJam-style: connects from CENTER to CENTER
  * 
- * FIXED: SVG layer is NOT transformed - we calculate coordinates in SCREEN space
+ * FIXED: Uses CANVAS space coordinates + CSS Transform + non-scaling-stroke
  */
 
 let connectionsLayer = null;
@@ -16,7 +16,6 @@ export function initConnections() {
 
 /**
  * Update all connections based on current DOM node positions
- * Calculates paths in SCREEN SPACE (accounts for pan/zoom)
  * @param {Object} map - Current map data (for connection list only)
  */
 export function updateConnections(map) {
@@ -26,12 +25,9 @@ export function updateConnections(map) {
     const existingPaths = connectionsLayer.querySelectorAll('.connection-path');
     existingPaths.forEach(path => path.remove());
 
-    // Get current transform
-    const transform = window.canvasTransform || { scale: 1, offsetX: 0, offsetY: 0 };
-
     // Draw each connection
     map.connections.forEach(conn => {
-        const path = createConnectionPath(conn, transform);
+        const path = createConnectionPath(conn);
         if (path) {
             connectionsLayer.appendChild(path);
         }
@@ -39,23 +35,12 @@ export function updateConnections(map) {
 }
 
 /**
- * Convert canvas coordinates to screen coordinates
- */
-function canvasToScreen(canvasX, canvasY, transform) {
-    return {
-        x: canvasX * transform.scale + transform.offsetX,
-        y: canvasY * transform.scale + transform.offsetY
-    };
-}
-
-/**
  * Create an SVG path element for a connection
- * Uses SCREEN space coordinates
+ * Uses CANVAS space coordinates (CSS transform handles zoom)
  * @param {Object} conn - Connection data
- * @param {Object} transform - Current canvas transform
  * @returns {SVGPathElement|null}
  */
-function createConnectionPath(conn, transform) {
+function createConnectionPath(conn) {
     const fromEl = document.getElementById(conn.from);
     const toEl = document.getElementById(conn.to);
 
@@ -77,22 +62,18 @@ function createConnectionPath(conn, transform) {
     };
 
     // Calculate centers in CANVAS space
-    const fromCenterCanvas = {
+    const fromCenter = {
         x: fromX + fromRect.width / 2,
         y: fromY + fromRect.height / 2
     };
 
-    const toCenterCanvas = {
+    const toCenter = {
         x: toX + toRect.width / 2,
         y: toY + toRect.height / 2
     };
 
-    // Convert to SCREEN space
-    const fromCenter = canvasToScreen(fromCenterCanvas.x, fromCenterCanvas.y, transform);
-    const toCenter = canvasToScreen(toCenterCanvas.x, toCenterCanvas.y, transform);
-
-    // Create smooth Bezier curve in screen space
-    const d = createBezierPath(fromCenter, toCenter, transform.scale);
+    // Create smooth Bezier curve
+    const d = createBezierPath(fromCenter, toCenter);
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('class', 'connection-path');
@@ -100,9 +81,6 @@ function createConnectionPath(conn, transform) {
     path.setAttribute('data-from', conn.from);
     path.setAttribute('data-to', conn.to);
     path.setAttribute('id', conn.id);
-
-    // Adjust stroke width for zoom (so it doesn't get too thin/thick)
-    path.style.strokeWidth = `${Math.max(1.5, 2 * transform.scale)}px`;
 
     // Add hover effect
     path.addEventListener('mouseenter', () => {
@@ -117,19 +95,18 @@ function createConnectionPath(conn, transform) {
 }
 
 /**
- * Create a smooth Bezier curve path between two screen points
- * @param {Object} from - Start point (screen space)
- * @param {Object} to - End point (screen space)
- * @param {number} scale - Current zoom scale
+ * Create a smooth Bezier curve path between two points
+ * @param {Object} from - Start point
+ * @param {Object} to - End point
  * @returns {string} SVG path d attribute
  */
-function createBezierPath(from, to, scale) {
+function createBezierPath(from, to) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Control point offset (adjusted for scale)
-    const curvature = Math.min(distance * 0.5, 120 * scale);
+    // Control point offset
+    const curvature = Math.min(distance * 0.5, 120);
 
     let cp1x, cp1y, cp2x, cp2y;
 

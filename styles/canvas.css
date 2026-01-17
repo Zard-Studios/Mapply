@@ -32,7 +32,23 @@
 }
 
 /* =====================================================
-   CONNECTIONS LAYER (SVG)
+   VIEWPORT (Single Transform Container)
+   ===================================================== */
+.viewport {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    /* This receives the JS transform */
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
+
+/* =====================================================
+   CONNECTIONS LAYER (SVG) - Inside Viewport
    ===================================================== */
 .connections-layer {
     position: absolute;
@@ -43,10 +59,11 @@
     z-index: var(--z-connections);
     pointer-events: none;
     overflow: visible;
+    /* No transform here - driven by parent viewport */
 }
 
 /* =====================================================
-   NODES LAYER
+   NODES LAYER - Inside Viewport
    ===================================================== */
 .nodes-layer {
     position: absolute;
@@ -55,8 +72,12 @@
     width: 100%;
     height: 100%;
     z-index: var(--z-nodes);
-    transform-origin: 0 0;
-    /* Transform applied via JS for pan/zoom */
+    pointer-events: none;
+}
+
+.node-card {
+    pointer-events: auto;
+    /* Re-enable clicks for nodes */
 }
 
 /* =====================================================
@@ -65,10 +86,12 @@
 .connection-path {
     fill: none;
     stroke: var(--accent);
-    stroke-width: 2;
+    stroke-width: 2px;
     stroke-linecap: round;
     pointer-events: stroke;
     transition: stroke-width var(--transition-fast);
+    vector-effect: non-scaling-stroke;
+    /* Keep stroke width constant on zoom */
 }
 
 .connection-path:hover {

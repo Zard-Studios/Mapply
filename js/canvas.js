@@ -5,6 +5,7 @@
 
 // Canvas state
 let canvasContainer = null;
+let viewport = null;
 let nodesLayer = null;
 let connectionsLayer = null;
 
@@ -32,8 +33,14 @@ let onTransformChange = null;
  */
 export function initCanvas(options = {}) {
     canvasContainer = document.getElementById('canvas-container');
+    viewport = document.getElementById('viewport'); // Get viewport
     nodesLayer = document.getElementById('nodes-layer');
     connectionsLayer = document.getElementById('connections-layer');
+
+    // CRITICAL for zoom sync
+    if (viewport) {
+        viewport.style.transformOrigin = '0 0';
+    }
 
     if (options.onTransformChange) {
         onTransformChange = options.onTransformChange;
@@ -188,9 +195,8 @@ function applyTransform() {
     const transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
     nodesLayer.style.transform = transform;
 
-    // SVG connections layer stays UNTRANSFORMED
-    // Connections will be calculated in screen space
-    // connectionsLayer.style.transform = transform; // REMOVED - causes double transform
+    // SVG connections layer transforms with nodes
+    connectionsLayer.style.transform = transform;
 
     if (onTransformChange) {
         onTransformChange({ scale, offsetX, offsetY });

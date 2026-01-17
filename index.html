@@ -1,33 +1,36 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Mapply – App di mappe concettuali DSA-friendly. Crea, modifica e salva mappe mentali in modo semplice e accessibile.">
+  <meta name="description"
+    content="Mapply – App di mappe concettuali DSA-friendly. Crea, modifica e salva mappe mentali in modo semplice e accessibile.">
   <meta name="theme-color" content="#6366f1">
-  
+
   <title>Mapply – Mappe Concettuali DSA-Friendly</title>
-  
+
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
-  
+
   <!-- Fonts: Inter (DSA-friendly) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <!-- Styles -->
   <link rel="stylesheet" href="styles/themes.css">
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/canvas.css">
   <link rel="stylesheet" href="styles/nodes.css">
 </head>
+
 <body>
   <!-- =====================================================
        APP CONTAINER – macOS Window Style
        ===================================================== -->
   <div id="app" class="app-container">
-    
+
     <!-- -------------------------------------------------
          TOP BAR – Traffic lights + Title + Actions
          ------------------------------------------------- -->
@@ -38,65 +41,66 @@
         <span class="light light-minimize"></span>
         <span class="light light-maximize"></span>
       </div>
-      
+
       <!-- Map title (editable) -->
       <div class="title-container">
         <h1 id="map-title" class="map-title" contenteditable="true" spellcheck="false">
           Nuova Mappa
         </h1>
       </div>
-      
+
       <!-- Action buttons -->
       <div class="top-actions">
         <button id="btn-theme" class="btn-icon" aria-label="Cambia tema" title="Cambia tema">
           <svg class="icon icon-theme-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"/>
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            <circle cx="12" cy="12" r="5" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
           </svg>
           <svg class="icon icon-theme-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
         </button>
-        
+
         <button id="btn-save" class="btn-icon" aria-label="Salva mappa" title="Salva">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-            <polyline points="7 3 7 8 15 8"/>
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
           </svg>
         </button>
-        
+
         <button id="btn-export" class="btn-icon" aria-label="Esporta JSON" title="Esporta">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
         </button>
-        
+
         <button id="btn-import" class="btn-icon" aria-label="Importa JSON" title="Importa">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
         </button>
       </div>
     </header>
-    
+
     <!-- -------------------------------------------------
          MAIN LAYOUT – Sidebars + Canvas
          ------------------------------------------------- -->
     <main class="main-layout">
-      
+
       <!-- LEFT SIDEBAR – Map List -->
       <aside id="sidebar-left" class="sidebar sidebar-left">
         <div class="sidebar-header">
           <h2>Le tue mappe</h2>
           <button id="btn-new-map" class="btn-small" aria-label="Nuova mappa">
             <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Nuova
           </button>
@@ -105,55 +109,61 @@
           <!-- Map items will be injected here -->
         </ul>
       </aside>
-      
+
       <!-- CANVAS AREA -->
       <div id="canvas-container" class="canvas-container">
-        <!-- SVG layer for connections -->
-        <svg id="connections-layer" class="connections-layer">
-          <defs>
-            <!-- Gradient for connections -->
-            <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style="stop-color: var(--accent)"/>
-              <stop offset="100%" style="stop-color: var(--accent-secondary)"/>
-            </linearGradient>
-          </defs>
-          <!-- Connection paths will be injected here -->
-        </svg>
-        
-        <!-- Nodes layer -->
-        <div id="nodes-layer" class="nodes-layer">
-          <!-- Nodes will be injected here -->
+
+        <!-- VIEWPORT (Single transform container) -->
+        <div id="viewport" class="viewport">
+
+          <!-- SVG layer for connections -->
+          <svg id="connections-layer" class="connections-layer">
+            <defs>
+              <!-- Gradient for connections -->
+              <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color: var(--accent)" />
+                <stop offset="100%" style="stop-color: var(--accent-secondary)" />
+              </linearGradient>
+            </defs>
+            <!-- Connection paths will be injected here -->
+          </svg>
+
+          <!-- Nodes layer -->
+          <div id="nodes-layer" class="nodes-layer">
+            <!-- Nodes will be injected here -->
+          </div>
+
         </div>
-        
+
         <!-- Add node button (floating) -->
         <button id="btn-add-node" class="btn-floating" aria-label="Aggiungi nodo">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-        
+
         <!-- Zoom controls -->
         <div class="zoom-controls">
           <button id="btn-zoom-in" class="btn-icon" aria-label="Zoom in">
             <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              <line x1="11" y1="8" x2="11" y2="14"/>
-              <line x1="8" y1="11" x2="14" y2="11"/>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
             </svg>
           </button>
           <span id="zoom-level" class="zoom-level">100%</span>
           <button id="btn-zoom-out" class="btn-icon" aria-label="Zoom out">
             <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              <line x1="8" y1="11" x2="14" y2="11"/>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="8" y1="11" x2="14" y2="11" />
             </svg>
           </button>
         </div>
       </div>
-      
+
       <!-- RIGHT SIDEBAR – AI Assist (disabled) -->
       <aside id="sidebar-right" class="sidebar sidebar-right">
         <div class="sidebar-header">
@@ -164,16 +174,11 @@
           <p class="ai-description">
             Descrivi un argomento e l'AI creerà una mappa concettuale per te.
           </p>
-          <textarea 
-            id="ai-input" 
-            class="ai-input" 
-            placeholder="Es: La fotosintesi clorofilliana..."
-            disabled
-            rows="4"
-          ></textarea>
+          <textarea id="ai-input" class="ai-input" placeholder="Es: La fotosintesi clorofilliana..." disabled
+            rows="4"></textarea>
           <button id="btn-ai-generate" class="btn-primary" disabled>
             <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
             Genera mappa
           </button>
@@ -182,20 +187,21 @@
           </p>
         </div>
       </aside>
-      
+
     </main>
-    
+
     <!-- -------------------------------------------------
          TOAST NOTIFICATIONS
          ------------------------------------------------- -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
-    
+
   </div>
-  
+
   <!-- Hidden file input for import -->
   <input type="file" id="file-import" accept=".json" hidden>
-  
+
   <!-- Scripts (ES modules) -->
   <script type="module" src="js/app.js"></script>
 </body>
+
 </html>
