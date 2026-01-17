@@ -187,6 +187,11 @@ async function createNewMap() {
  * Handle map deletion
  */
 async function handleDeleteMap(mapId) {
+    // If deleting the current map, cancel any pending auto-saves to prevent resurrection
+    if (currentMap && currentMap.id === mapId) {
+        cancelAutoSave();
+    }
+
     await deleteMap(mapId);
 
     // If we deleted the current map, switch to another
@@ -230,6 +235,16 @@ function scheduleAutoSave() {
         await saveCurrentMap();
         console.log('Auto-saved');
     }, 1000);
+}
+
+/**
+ * Cancel pending auto-save
+ */
+function cancelAutoSave() {
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
 }
 
 /**
