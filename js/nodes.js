@@ -169,6 +169,16 @@ function setupNodeEvents(nodeEl, nodeData) {
             e.stopPropagation();
             const action = btn.dataset.action;
             if (action === 'bold' || action === 'italic' || action === 'underline') {
+                // If we have a visual highlight, make it a real selection first
+                const highlight = contentEl.querySelector('.temp-selection-highlight');
+                if (highlight) {
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(highlight);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+
                 applyTextStyle(action);
                 updateToolbarState(toolbar, contentEl);
                 contentEl.focus();
@@ -345,7 +355,14 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     const highlight = contentEl.querySelector('.temp-selection-highlight');
     if (highlight) {
         highlight.style.fontSize = `${size}px`;
-        // Don't remove the class here! We want to keep updating it if the user keeps typing in the input
+
+        // Re-select to keep selection active for other buttons
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(highlight);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
         updateConnections(currentMap);
         onNodeChange?.();
         return;
