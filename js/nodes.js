@@ -162,13 +162,18 @@ function setupNodeEvents(nodeEl, nodeData) {
     contentEl.setAttribute('contenteditable', 'false');
 
     // Single click = select and prepare for drag
-    // BUT: if spacebar is held, let canvas handle pan instead
+    // BUT: not on content area when editing, and not if spacebar held
     nodeEl.addEventListener('mousedown', (e) => {
         if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
         if (e.target.closest('.node-handle')) return;
 
         // If spacebar is held (pan mode), don't start drag - let canvas handle it
         if (window.isSpacePanMode) return;
+
+        // If clicking on content area while in edit mode, don't drag - allow text selection
+        if (e.target.closest('.node-content') && contentEl.getAttribute('contenteditable') === 'true') {
+            return; // Let text selection work
+        }
 
         selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
