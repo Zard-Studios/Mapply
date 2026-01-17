@@ -128,13 +128,29 @@ function setupAIPanel() {
 
             console.log('[AI] Parsed mapData:', mapData);
 
-            if (mapData && mapData.nodes && mapData.nodes.length > 0) {
-                // Create nodes on the canvas!
-                const result = await createMapFromAI(mapData);
-                if (result.nodesCreated > 0) {
-                    updateMessage(loadingId, `✨ Ho aggiunto ${result.nodesCreated} nodi alla mappa!`);
-                } else if (result.connectionsCreated > 0) {
-                    updateMessage(loadingId, `✨ Ho collegato i nodi esistenti!`);
+            if (mapData) {
+                let resultMessage = '';
+
+                // Check if using new "actions" format
+                if (mapData.actions && mapData.actions.length > 0) {
+                    const result = await executeMapActions(mapData.actions);
+                    const parts = [];
+                    if (result.added > 0) parts.push(`+${result.added} nodi`);
+                    if (result.edited > 0) parts.push(`✏️ ${result.edited} modificati`);
+                    if (result.deleted > 0) parts.push(`🗑️ ${result.deleted} rimossi`);
+                    resultMessage = parts.length > 0 ? `✨ ${parts.join(', ')}` : response;
+                    updateMessage(loadingId, resultMessage);
+                }
+                // Old format with nodes/connections
+                else if (mapData.nodes && mapData.nodes.length > 0) {
+                    const result = await createMapFromAI(mapData);
+                    if (result.nodesCreated > 0) {
+                        updateMessage(loadingId, `✨ Ho aggiunto ${result.nodesCreated} nodi alla mappa!`);
+                    } else if (result.connectionsCreated > 0) {
+                        updateMessage(loadingId, `✨ Ho collegato i nodi esistenti!`);
+                    } else {
+                        updateMessage(loadingId, response);
+                    }
                 } else {
                     updateMessage(loadingId, response);
                 }
@@ -302,8 +318,8 @@ function extractMapJSON(text) {
         }
     }
 
-    // Try to find raw JSON object
-    const jsonMatch = text.match(/\{[\s\S]*"nodes"[\s\S]*\}/);
+    // Try to find raw JSON object with nodes OR actions
+    const jsonMatch = text.match(/\{[\s\S]*(?:"nodes"|"actions")[\s\S]*\}/);
     if (jsonMatch) {
         try {
             return JSON.parse(jsonMatch[0]);
@@ -313,6 +329,83 @@ function extractMapJSON(text) {
     }
 
     return null;
+}
+
+/**
+ * Execute map actions (ADD, EDIT, DELETE)
+ */
+async function executeMapActions(actions) {
+    const { createNode, createConnection } = await import('../schema.js');
+    const nodesModule = await import('../nodes.js');
+    const { getCurrentMap } = await import('../app.js');
+    const { updateConnections } = await import('../connections.js');
+
+    const currentMap = getCurrentMap();
+    if (!currentMap) return { added: 0, edited: 0, deleted: 0 };
+
+    let added = 0, edited = 0, deleted = 0;
+
+    for (const action of actions) {
+        console.log('[AI] Executing action:', action);
+
+        switch (action.type) {
+            case 'add': {
+                // Find parent node position
+                let x = 400, y = 300;
+                if (action.parentId) {
+                    const parentNode = currentMap.nodes.find(n => n.id === action.parentId);
+                    if (parentNode) {
+                        x = (parentNode.x || 0);
+                        y = (parentNode.y || 0) + 180;
+                    }
+                }
+
+                const newNode = createNode({
+                    content: parseMarkdownToHTML(action.content),
+                    type: action.nodeType || 'child',
+                    x: x,
+                    y: y
+                });
+                nodesModule.addNodeToMap(newNode);
+
+                // Create connection to parent
+                if (action.parentId) {
+                    const connection = createConnection(action.parentId, newNode.id);
+                    nodesModule.addConnectionToMap(connection);
+                }
+
+                added++;
+                break;
+            }
+
+            case 'edit': {
+                const nodeToEdit = currentMap.nodes.find(n => n.id === action.id);
+                if (nodeToEdit) {
+                    nodeToEdit.content = parseMarkdownToHTML(action.content);
+                    // Update DOM
+                    const nodeEl = document.getElementById(action.id);
+                    const contentEl = nodeEl?.querySelector('.node-content');
+                    if (contentEl) {
+                        contentEl.innerHTML = nodeToEdit.content;
+                    }
+                    edited++;
+                }
+                break;
+            }
+
+            case 'delete': {
+                nodesModule.deleteNode(action.id);
+                deleted++;
+                break;
+            }
+        }
+    }
+
+    // Render and update
+    nodesModule.renderAllNodes();
+    setTimeout(() => updateConnections(currentMap), 100);
+
+    return { added, edited, deleted };
 }
 
 /**
