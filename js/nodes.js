@@ -318,9 +318,10 @@ function setupNodeEvents(nodeEl, nodeData) {
         };
 
         fontInput.addEventListener('input', (e) => {
-            const size = parseInt(e.target.value);
-            // Allow typing just "2" or digits, but only apply valid sizes
-            if (!isNaN(size) && size >= 8 && size <= 72) {
+            const val = e.target.value;
+            const size = parseInt(val);
+            // Allow typing any number, just clamp reasonably for rendering
+            if (!isNaN(size) && size >= 1 && size <= 300) {
                 setNodeFontSize(nodeEl, nodeData, size);
             }
         });
@@ -472,12 +473,18 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     if (highlight) {
         highlight.style.fontSize = `${size}pt`;
 
-        // Re-select to keep selection active for other buttons
-        const sel = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(highlight);
-        sel.removeAllRanges();
-        sel.addRange(range);
+        // Re-select to keep selection active for other buttons, 
+        // BUT ONLY IF we are not currently typing in the input (which would steal focus)
+        const active = document.activeElement;
+        const isFontInput = active && active.classList.contains('font-size-input');
+
+        if (!isFontInput) {
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(highlight);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
 
         updateConnections(currentMap);
         updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
