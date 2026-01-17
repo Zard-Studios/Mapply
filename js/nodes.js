@@ -52,12 +52,12 @@ export function initNodes(map, options = {}) {
         const active = document.activeElement;
         const isEditing = active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
 
-        if ((e.key === 'Backspace' || e.key === 'Delete') && selectedNodeId) {
+        if (e.key === 'Backspace' || e.key === 'Delete') {
             if (isEditing) return;
-            e.preventDefault();
-            if (isEditing) return;
-            e.preventDefault();
-            deleteSelectedNodes();
+            if (selectedNodeIds.size > 0 || selectedNodeId) {
+                e.preventDefault();
+                deleteSelectedNodes();
+            }
         }
 
         if (e.key === 'Enter' && selectedNodeId && !isEditing) {
@@ -206,7 +206,26 @@ function setupNodeEvents(nodeEl, nodeData) {
             e.preventDefault();
         }
 
-        selectNode(nodeData.id);
+        // If clicking a node that is NOT in the current selection set,
+        // we should select it (and clear others) unless shift is held.
+        // But startDrag handles the "add to selection" logic if Shift is held.
+        // We just need to make sure we don't accidentally clear the multi-selection 
+        // if we are simply clicking to drag a pre-selected group.
+
+        let shouldSelect = true;
+        if (selectedNodeIds.has(nodeData.id) && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            // It's already selected. Don't re-select (which would clear others),
+            // unless we mouseUp without dragging (which is a click).
+            // But 'selectNode' clears immediately.
+            // So we skip 'selectNode' here and let startDrag handle the group move.
+            shouldSelect = false;
+            selectedNodeId = nodeData.id; // Update primary focus though
+        }
+
+        if (shouldSelect) {
+            selectNode(nodeData.id);
+        }
+
         startDrag(e, nodeEl, nodeData);
     });
 
