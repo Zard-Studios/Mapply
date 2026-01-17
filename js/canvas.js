@@ -115,13 +115,24 @@ function setupPanning() {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.font-size-dropdown')) return;
 
+        // LASSO MODE Logic
+        // If Lasso Mode active AND no modifiers -> Do Lasso (override Pan)
+        if (lassoModeActive && !e.ctrlKey && !e.metaKey && !window.isSpacePanMode) {
+            import('./nodes.js').then(({ startLassoSelection }) => {
+                startLassoSelection(e, () => {
+                    // Exit Lasso Mode if empty selection or just a click
+                    lassoModeActive = false;
+                    canvasContainer.style.cursor = '';
+                    import('./ui.js').then(({ showToast }) => showToast('Modalità Lazo disattivata', 'info', 1000));
+                });
+            });
+            return;
+        }
+
         // Check for Box Selection Modifier (Ctrl/Cmd)
-        // If Lasso Mode is active OR Alt is held -> Lasso
-        // Else -> Box
+        // If Alt is held -> Forced Lasso (legacy/quick access)
         if (e.ctrlKey || e.metaKey) {
-            if (lassoModeActive || e.altKey) {
-                lassoModeActive = false; // Reset
-                canvasContainer.style.cursor = '';
+            if (e.altKey) {
                 import('./nodes.js').then(({ startLassoSelection }) => {
                     startLassoSelection(e);
                 });

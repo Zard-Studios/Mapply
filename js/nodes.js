@@ -1088,8 +1088,10 @@ export function startSelectionBox(e) {
 
 /**
  * Start Lasso Selection (Freehand)
+ * @param {MouseEvent} e
+ * @param {Function} [onExitMode] - Callback to exit lasso mode (e.g. on empty selection)
  */
-export function startLassoSelection(e) {
+export function startLassoSelection(e, onExitMode) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1099,13 +1101,12 @@ export function startLassoSelection(e) {
     }
 
     // Create SVG for lasso line
-    // Create SVG for lasso line
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.position = 'fixed';
     svg.style.top = '0';
     svg.style.left = '0';
-    svg.style.width = '100%';
-    svg.style.height = '100%';
+    svg.style.width = '100vw';
+    svg.style.height = '100vh';
     svg.style.pointerEvents = 'none';
     svg.style.zIndex = '9999';
 
@@ -1120,8 +1121,10 @@ export function startLassoSelection(e) {
     document.body.appendChild(svg);
 
     const points = [{ x: e.clientX, y: e.clientY }];
+    let hasMoved = false;
 
     const onMouseMove = (me) => {
+        hasMoved = true;
         points.push({ x: me.clientX, y: me.clientY });
         const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
         path.setAttribute('d', d);
@@ -1131,6 +1134,7 @@ export function startLassoSelection(e) {
         // Close the loop visually
         path.setAttribute('d', path.getAttribute('d') + ' Z');
 
+        let hitCount = 0;
         // Check intersection with nodes
         const nodes = document.querySelectorAll('.node');
         nodes.forEach(nodeEl => {
@@ -1140,6 +1144,7 @@ export function startLassoSelection(e) {
 
             if (isPointInPolygon({ x: centerX, y: centerY }, points)) {
                 addToSelection(nodeEl.id);
+                hitCount++;
             }
         });
 
@@ -1147,6 +1152,13 @@ export function startLassoSelection(e) {
         svg.remove();
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+
+        // Exit mode conditions:
+        // 1. Didn't move (Click)
+        // 2. Lasso selected nothing (Empty)
+        if (!hasMoved || hitCount === 0) {
+            onExitMode?.();
+        }
     };
 
     document.addEventListener('mousemove', onMouseMove);
