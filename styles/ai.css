@@ -241,11 +241,11 @@ body:has(.ai-panel.visible) .floating-actions {
 .input-row {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
     background: var(--surface-hover);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: var(--spacing-xs);
+    padding-left: var(--spacing-md);
     transition: border-color var(--transition-fast);
 }
 
