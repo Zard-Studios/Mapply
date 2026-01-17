@@ -243,6 +243,7 @@ export function initContextMenu() {
 
     // Populate shortcuts
     const shortcuts = {
+        'add-node': 'Q',
         'cut': `${mod}+X`,
         'copy': `${mod}+C`,
         'duplicate': `${mod}+D`,
