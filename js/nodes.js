@@ -317,12 +317,11 @@ function setupNodeEvents(nodeEl, nodeData) {
             contentEl.normalize();
         };
 
-        fontInput.addEventListener('change', (e) => {
+        fontInput.addEventListener('input', (e) => {
             const size = parseInt(e.target.value);
-            if (size >= 8 && size <= 72) {
-                // Don't call removeHighlight here, let setNodeFontSize handle it or use it
+            // Allow typing just "2" or digits, but only apply valid sizes
+            if (!isNaN(size) && size >= 8 && size <= 72) {
                 setNodeFontSize(nodeEl, nodeData, size);
-                contentEl.focus();
             }
         });
 
@@ -340,11 +339,7 @@ function setupNodeEvents(nodeEl, nodeData) {
         fontInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const size = parseInt(e.target.value);
-                if (size >= 8 && size <= 72) {
-                    setNodeFontSize(nodeEl, nodeData, size);
-                    contentEl.focus();
-                }
+                contentEl.focus(); // Return focus to content
             }
         });
     }
