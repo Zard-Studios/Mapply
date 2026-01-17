@@ -613,6 +613,14 @@ function updateToolbarState(toolbar, contentEl) {
             container = contentEl;
         }
 
+        // SPECIAL CASE: If we selected the whole node (container === contentEl),
+        // we might be missing the style that lives on the child span.
+        // Let's check if there's a direct child that might hold the style.
+        if (container === contentEl && contentEl.firstElementChild) {
+            // Use the first element child as the source of truth if available
+            container = contentEl.firstElementChild;
+        }
+
         if (container && (contentEl.contains(container) || container === contentEl)) {
             const computedStyle = window.getComputedStyle(container);
 
