@@ -278,10 +278,9 @@
     user-select: none;
 }
 
-/* Fake selection to keep highlight visible when input has focus */
-.temp-selection-highlight {
+/* Fake selection highlight – only visible during edit mode */
+.node-content[contenteditable="true"] .temp-selection-highlight {
     background-color: rgba(99, 102, 241, 0.3) !important;
-    /* Accent with opacity */
     border-radius: 2px;
 }
 
@@ -420,6 +419,7 @@
 .node.selected .node-handle-right {
     transform: translateY(-50%);
 }
+
 /* Phantom node for connection preview */
 .node-phantom {
     position: absolute;

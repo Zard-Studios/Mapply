@@ -584,13 +584,40 @@ export function deleteNode(nodeId) {
 }
 
 /**
+ * Clean HTML content from temporary editor classes/spans
+ */
+function cleanNodeContent(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+
+    // Remove temporary highlight classes
+    div.querySelectorAll('.temp-selection-highlight').forEach(span => {
+        if (span.style.fontSize) {
+            span.classList.remove('temp-selection-highlight');
+        } else {
+            // Unwrap placeholder spans
+            while (span.firstChild) {
+                span.parentNode.insertBefore(span.firstChild, span);
+            }
+            span.remove();
+        }
+    });
+
+    return div.innerHTML;
+}
+
+/**
  * Update a node field
  */
 function updateNodeField(nodeId, field, value) {
     if (!currentMap) return;
     const node = currentMap.nodes.find(n => n.id === nodeId);
     if (node) {
-        node[field] = value;
+        if (field === 'content') {
+            node[field] = cleanNodeContent(value);
+        } else {
+            node[field] = value;
+        }
         onNodeChange?.();
     }
 }
