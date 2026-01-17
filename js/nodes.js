@@ -32,9 +32,7 @@ export function initNodes(map, options = {}) {
 
     renderAllNodes();
 
-    document.getElementById('btn-add-node')?.addEventListener('click', () => {
-        addNodeAtCenter();
-    });
+    renderAllNodes();
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
@@ -1023,7 +1021,7 @@ export function deleteSelectedNodes() {
 /**
  * Add node at center
  */
-function addNodeAtCenter() {
+export function addNodeAtCenter() {
     if (!currentMap) return;
     const container = document.getElementById('canvas-container');
     const rect = container.getBoundingClientRect();

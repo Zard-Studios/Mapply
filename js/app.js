@@ -14,7 +14,7 @@ import {
     setLastMapId
 } from './storage.js';
 import { initCanvas, getTransform } from './canvas.js';
-import { initNodes, setCurrentMap, renderAllNodes } from './nodes.js';
+import { initNodes, setCurrentMap, renderAllNodes, addNodeAtCenter } from './nodes.js';
 import { initConnections, updateConnections } from './connections.js';
 import { exportMapToFile, openImportDialog } from './io.js';
 import {
@@ -266,6 +266,11 @@ function setupEventListeners() {
 
     // New map button
     document.getElementById('btn-new-map')?.addEventListener('click', createNewMap);
+
+    // Add Node button (floating) - Moved here to avoid duplicate listeners
+    document.getElementById('btn-add-node')?.addEventListener('click', () => {
+        addNodeAtCenter();
+    });
 
     // Save button
     document.getElementById('btn-save')?.addEventListener('click', async () => {
