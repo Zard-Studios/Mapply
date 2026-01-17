@@ -671,11 +671,74 @@ function updateToolbarState(toolbar, contentEl) {
                 sizePt = Math.round(px * 0.75);
             }
 
+            // --- MIXED FONT SIZE DETECTION ---
             const fontInput = toolbar.querySelector('.font-size-input');
-            if (fontInput && !isNaN(sizePt) && sizePt > 0) {
+
+            if (fontInput) {
+                let displayValue = sizePt;
+
+                // Only check for mixed sizes if we have a range selection (not just cursor)
+                if (!selection.isCollapsed) {
+                    const range = selection.getRangeAt(0);
+                    // Create a walker to check every text node in the selection
+                    const walker = document.createTreeWalker(
+                        range.commonAncestorContainer,
+                        NodeFilter.SHOW_TEXT,
+                        {
+                            acceptNode: (node) => {
+                                // Only accept nodes that are at least partially selected
+                                if (selection.containsNode(node, true)) return NodeFilter.FILTER_ACCEPT;
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                        }
+                    );
+
+                    let firstSize = null;
+                    let isMixed = false;
+                    let currentNode = walker.nextNode();
+
+                    while (currentNode) {
+                        // Determine size for this specific text node
+                        let nodeSize = 0;
+                        let parent = currentNode.parentElement;
+
+                        // Check inline styles up to contentEl
+                        let tempParent = parent;
+                        while (tempParent && contentEl.contains(tempParent)) {
+                            if (tempParent.style?.fontSize?.endsWith('pt')) {
+                                nodeSize = parseInt(tempParent.style.fontSize);
+                                break;
+                            }
+                            if (tempParent === contentEl) break;
+                            tempParent = tempParent.parentElement;
+                        }
+
+                        // Fallback to computed
+                        if (nodeSize === 0) {
+                            const px = parseFloat(window.getComputedStyle(parent).fontSize);
+                            nodeSize = Math.round(px * 0.75);
+                        }
+
+                        if (firstSize === null) {
+                            firstSize = nodeSize;
+                        } else if (firstSize !== nodeSize) {
+                            isMixed = true;
+                            break;
+                        }
+                        currentNode = walker.nextNode();
+                    }
+
+                    if (isMixed) {
+                        displayValue = '-';
+                    } else if (firstSize !== null) {
+                        // If we checked multiple nodes and they are uniform, prefer that confirmed size
+                        displayValue = firstSize;
+                    }
+                }
+
                 // Only update if not currently focused to avoid fighting the user
                 if (document.activeElement !== fontInput) {
-                    fontInput.value = sizePt;
+                    fontInput.value = displayValue;
                 }
             }
 
