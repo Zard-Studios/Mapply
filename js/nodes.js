@@ -66,11 +66,37 @@ export function initNodes(map, options = {}) {
             copySelection();
         }
 
+        // Cut (Cmd/Ctrl + X)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'x') {
+            if (isEditing) return;
+            e.preventDefault();
+            copySelection();
+            deleteSelectedNodes();
+        }
+
         // Paste (Cmd/Ctrl + V)
         if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
             if (isEditing) return;
+            // Allow default paste if we want system text, 
+            // BUT our pasteSelection handles system text reading manually.
+            // If we don't preventDefault, browser might try to paste too?
+            // Usually 'v' doesn't do much in non-inputs, but let's prevent default to be safe.
             e.preventDefault();
             pasteSelection();
+        }
+
+        // Duplicate (Cmd/Ctrl + D)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+            e.preventDefault(); // CRITICAL: Stop Browser Bookmark Dialog
+            if (isEditing) return;
+            duplicateSelectedNodes();
+        }
+
+        // Select All (Cmd/Ctrl + A)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+            if (isEditing) return;
+            e.preventDefault();
+            selectAllNodes();
         }
 
         if (e.key === 'Enter' && selectedNodeId && !isEditing) {
