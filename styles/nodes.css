@@ -75,7 +75,8 @@
     outline: 2px dashed var(--accent);
     outline-offset: 4px;
     z-index: 60;
-    /* Above regular selection */
+    transition: none !important;
+    /* Instant appear/disappear */
 }
 
 /* =====================================================
@@ -178,6 +179,16 @@
     opacity: 1;
     pointer-events: auto;
     transform: translateX(-50%) translateY(0) scale(1);
+    transition:
+        opacity 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Toolbar hidden state (snappier exit) */
+.node-toolbar[data-visible="false"] {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.95);
+    transition: opacity 0.08s ease-in, transform 0.1s ease-in;
 }
 
 /* Toolbar buttons */

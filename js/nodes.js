@@ -216,17 +216,16 @@ function setupNodeEvents(nodeEl, nodeData) {
     });
 
     contentEl.addEventListener('blur', () => {
-        // We still need a small delay for blur to check if focus moved to toolbar
+        // Snappier delay (50ms) to check if focus moved to toolbar
         setTimeout(() => {
             const active = document.activeElement;
             const toToolbar = active?.closest('.node-toolbar');
             if (toToolbar && toToolbar.closest('.node') === nodeEl) return;
 
-            // If we are actually leaving the node area, exit edit mode
             if (contentEl.getAttribute('contenteditable') === 'true') {
                 exitEditMode(contentEl, toolbar);
             }
-        }, 150);
+        }, 50);
     });
 
     toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
@@ -363,8 +362,11 @@ function setupNodeEvents(nodeEl, nodeData) {
             } else {
                 // Enter only: commit changes and exit immediately
                 e.preventDefault();
-                exitEditMode(contentEl, toolbar);
-                contentEl.blur(); // Still blur to release actual focus
+                const wasEditable = contentEl.getAttribute('contenteditable') === 'true';
+                if (wasEditable) {
+                    exitEditMode(contentEl, toolbar);
+                    contentEl.blur();
+                }
             }
         }
 
@@ -442,24 +444,25 @@ function hideToolbar(toolbar) {
  * Hide all toolbars
  */
 function hideAllToolbars(excludeNode = null) {
-    document.querySelectorAll('.node-toolbar[data-visible="true"]').forEach(t => {
-        const node = t.closest('.node');
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(node => {
         if (excludeNode && node === excludeNode) return;
-        t.dataset.visible = 'false';
-        if (node) {
-            const content = node.querySelector('.node-content');
-            if (content) content.setAttribute('contenteditable', 'false');
-        }
-    });
-    document.querySelectorAll('.node-content[contenteditable="true"]').forEach(el => {
-        const node = el.closest('.node');
-        if (excludeNode && node === excludeNode) return;
-        el.setAttribute('contenteditable', 'false');
+
+        // Hide toolbar
+        const toolbar = node.querySelector('.node-toolbar');
+        if (toolbar) toolbar.dataset.visible = 'false';
+
+        // Disable edit mode
+        const content = node.querySelector('.node-content');
+        if (content) content.setAttribute('contenteditable', 'false');
+
+        // Remove visual indicators
         node.classList.remove('editing');
     });
+
     if (!excludeNode) {
         activeToolbar = null;
-        window.getSelection().removeAllRanges();
+        window.getSelection()?.removeAllRanges();
     }
 }
 
