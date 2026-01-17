@@ -67,8 +67,7 @@
 .node.selected {
     border-color: var(--accent);
     box-shadow: var(--shadow-lg), var(--shadow-glow);
-    z-index: 1000;
-    /* Ensure selected node is above others */
+    z-index: 50;
 }
 
 /* =====================================================
@@ -153,7 +152,7 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
-    z-index: 2000;
+    z-index: var(--z-floating);
 
     /* Hidden by default */
     opacity: 0;

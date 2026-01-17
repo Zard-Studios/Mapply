@@ -151,7 +151,7 @@ function renderNode(nodeData) {
         </svg>
       </button>
     </div>
-    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}px; text-align: ${textAlign};">${nodeData.content || ''}</div>
+    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}pt; text-align: ${textAlign};">${nodeData.content || ''}</div>
     <div class="node-handle node-handle-top" data-handle="top"></div>
     <div class="node-handle node-handle-bottom" data-handle="bottom"></div>
     <div class="node-handle node-handle-left" data-handle="left"></div>
@@ -418,7 +418,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     // 1. Check for visual highlight (fake selection)
     const highlight = contentEl.querySelector('.temp-selection-highlight');
     if (highlight) {
-        highlight.style.fontSize = `${size}px`;
+        highlight.style.fontSize = `${size}pt`;
 
         // Re-select to keep selection active for other buttons
         const sel = window.getSelection();
@@ -439,7 +439,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
         const range = selection.getRangeAt(0);
         if (contentEl.contains(range.commonAncestorContainer) || range.commonAncestorContainer === contentEl) {
             const span = document.createElement('span');
-            span.style.fontSize = `${size}px`;
+            span.style.fontSize = `${size}pt`;
             try {
                 const fragment = range.extractContents();
                 span.appendChild(fragment);
@@ -460,7 +460,7 @@ function setNodeFontSize(nodeEl, nodeData, size) {
     }
 
     // 3. No selection = apply to entire node
-    contentEl.style.fontSize = `${size}px`;
+    contentEl.style.fontSize = `${size}pt`;
     updateNodeField(nodeData.id, 'fontSize', size);
     updateConnections(currentMap);
 }
@@ -535,34 +535,38 @@ function updateToolbarState(toolbar, contentEl) {
     toolbar.querySelector('[data-action="bold"]')?.classList.toggle('active', isBold);
     toolbar.querySelector('[data-action="italic"]')?.classList.toggle('active', isItalic);
     toolbar.querySelector('[data-action="underline"]')?.classList.toggle('active', isUnderline);
-
-    // Update alignment states
-    const alignment = document.queryCommandValue('justifyLeft') === 'true' ? 'left' :
-        document.queryCommandValue('justifyCenter') === 'true' ? 'center' :
-            document.queryCommandValue('justifyRight') === 'true' ? 'right' : '';
-
-    // If queryCommandValue fails or we want more precision from the element itself
     const selection = window.getSelection();
-    let currentAlign = alignment;
-    if (selection.rangeCount > 0) {
-        let container = selection.getRangeAt(0).commonAncestorContainer;
-        if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
-        const style = window.getComputedStyle(container);
-        currentAlign = style.textAlign;
-    }
-
-    toolbar.querySelector('[data-action="align-left"]')?.classList.toggle('active', currentAlign === 'left' || currentAlign === 'start');
-    toolbar.querySelector('[data-action="align-center"]')?.classList.toggle('active', currentAlign === 'center');
-    toolbar.querySelector('[data-action="align-right"]')?.classList.toggle('active', currentAlign === 'right' || currentAlign === 'end');
-
-    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+    if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        let container = range.commonAncestorContainer;
+        let container = range.startContainer;
         if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
-        const fontSize = window.getComputedStyle(container).fontSize;
-        const sizeNum = parseInt(fontSize);
-        const fontInput = toolbar.querySelector('.font-size-input');
-        if (fontInput && sizeNum) fontInput.value = sizeNum;
+
+        if (container && contentEl.contains(container)) {
+            const style = window.getComputedStyle(container);
+
+            // FONT SIZE: Try to get it in pt
+            // If the element has a style.fontSize, it might be in pt already
+            let sizePt = 0;
+            const inlineSize = container.style.fontSize;
+            if (inlineSize && inlineSize.endsWith('pt')) {
+                sizePt = parseInt(inlineSize);
+            } else {
+                // Fallback to computed px -> pt
+                const px = parseFloat(style.fontSize);
+                sizePt = Math.round(px * 0.75);
+            }
+
+            const fontInput = toolbar.querySelector('.font-size-input');
+            if (fontInput && !isNaN(sizePt) && sizePt > 0) {
+                fontInput.value = sizePt;
+            }
+
+            // ALIGNMENT
+            const currentAlign = style.textAlign;
+            toolbar.querySelector('[data-action="align-left"]')?.classList.toggle('active', currentAlign === 'left' || currentAlign === 'start');
+            toolbar.querySelector('[data-action="align-center"]')?.classList.toggle('active', currentAlign === 'center');
+            toolbar.querySelector('[data-action="align-right"]')?.classList.toggle('active', currentAlign === 'right' || currentAlign === 'end');
+        }
     }
 }
 
