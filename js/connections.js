@@ -1,7 +1,7 @@
 /**
  * connections.js – SVG curve connections between nodes
- * Uses Bezier curves for smooth, elegant lines
- * FIXED: Now reads positions directly from DOM for real-time updates
+ * FigJam-style: connects from CENTER to CENTER
+ * Fixed zoom handling
  */
 
 let connectionsLayer = null;
@@ -35,7 +35,7 @@ export function updateConnections(map) {
 
 /**
  * Create an SVG path element for a connection
- * Reads positions directly from DOM elements for accuracy
+ * FigJam style: CENTER to CENTER connection
  * @param {Object} conn - Connection data
  * @returns {SVGPathElement|null}
  */
@@ -60,7 +60,7 @@ function createConnectionPath(conn) {
         height: toEl.offsetHeight
     };
 
-    // Calculate centers
+    // FigJam style: Use CENTER points directly
     const fromCenter = {
         x: fromX + fromRect.width / 2,
         y: fromY + fromRect.height / 2
@@ -71,12 +71,8 @@ function createConnectionPath(conn) {
         y: toY + toRect.height / 2
     };
 
-    // Get edge connection points
-    const fromPoint = getEdgePoint(fromX, fromY, fromRect, toCenter);
-    const toPoint = getEdgePoint(toX, toY, toRect, fromCenter);
-
-    // Create Bezier curve path
-    const d = createBezierPath(fromPoint, toPoint);
+    // Create smooth Bezier curve from center to center
+    const d = createBezierPath(fromCenter, toCenter);
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('class', 'connection-path');
@@ -98,52 +94,9 @@ function createConnectionPath(conn) {
 }
 
 /**
- * Get the connection point on the edge of a node
- * @param {number} nodeX - Node X position
- * @param {number} nodeY - Node Y position
- * @param {Object} rect - Node dimensions
- * @param {Object} target - Target point to connect towards
- * @returns {Object} { x, y }
- */
-function getEdgePoint(nodeX, nodeY, rect, target) {
-    const centerX = nodeX + rect.width / 2;
-    const centerY = nodeY + rect.height / 2;
-
-    const dx = target.x - centerX;
-    const dy = target.y - centerY;
-
-    // If target is at the same position, return center
-    if (dx === 0 && dy === 0) {
-        return { x: centerX, y: centerY };
-    }
-
-    const halfWidth = rect.width / 2;
-    const halfHeight = rect.height / 2;
-
-    // Calculate intersection with rectangle edge
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    let x, y;
-
-    // Check if the line exits through left/right or top/bottom
-    if (absDx * halfHeight > absDy * halfWidth) {
-        // Exits through left or right
-        x = centerX + halfWidth * Math.sign(dx);
-        y = centerY + (halfWidth * dy) / absDx;
-    } else {
-        // Exits through top or bottom
-        x = centerX + (halfHeight * dx) / absDy;
-        y = centerY + halfHeight * Math.sign(dy);
-    }
-
-    return { x, y };
-}
-
-/**
- * Create a smooth Bezier curve path between two points
- * @param {Object} from - Start point
- * @param {Object} to - End point
+ * Create a smooth Bezier curve path between two center points
+ * @param {Object} from - Start center point
+ * @param {Object} to - End center point
  * @returns {string} SVG path d attribute
  */
 function createBezierPath(from, to) {
@@ -152,22 +105,23 @@ function createBezierPath(from, to) {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     // Control point offset based on distance (smoother curves)
-    const curvature = Math.min(distance * 0.4, 80);
+    const curvature = Math.min(distance * 0.5, 120);
 
     let cp1x, cp1y, cp2x, cp2y;
 
-    if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal-ish connection
-        cp1x = from.x + curvature * Math.sign(dx);
-        cp1y = from.y;
-        cp2x = to.x - curvature * Math.sign(dx);
-        cp2y = to.y;
-    } else {
-        // Vertical-ish connection
+    // Determine curve direction based on relative position
+    if (Math.abs(dy) > Math.abs(dx) * 0.5) {
+        // Primarily vertical: curve exits top/bottom
         cp1x = from.x;
         cp1y = from.y + curvature * Math.sign(dy);
         cp2x = to.x;
         cp2y = to.y - curvature * Math.sign(dy);
+    } else {
+        // Primarily horizontal: curve exits left/right
+        cp1x = from.x + curvature * Math.sign(dx);
+        cp1y = from.y;
+        cp2x = to.x - curvature * Math.sign(dx);
+        cp2y = to.y;
     }
 
     return `M ${from.x} ${from.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${to.x} ${to.y}`;

@@ -1,7 +1,10 @@
 /**
  * nodes.css – Node card styles
- * SIMPLIFIED: No icons, no color borders
- * Just clean glass cards with editable content
+ * FEATURES:
+ * - Animated floating toolbar (playful spring animation)
+ * - Font size dropdown
+ * - 18pt default text
+ * - Clean glass cards
  */
 
 /* =====================================================
@@ -10,7 +13,7 @@
 .node {
     position: absolute;
     min-width: 140px;
-    max-width: 320px;
+    max-width: 360px;
     padding: var(--spacing-md);
 
     /* Glass effect */
@@ -18,7 +21,7 @@
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
 
-    /* Clean borders and shadows - NO color borders */
+    /* Clean borders and shadows */
     border: 1px solid var(--surface-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
@@ -32,18 +35,18 @@
         border-color var(--transition-fast);
 
     /* Fade-in animation */
-    animation: node-appear var(--transition-normal) ease-out;
+    animation: node-appear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes node-appear {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.9) translateY(10px);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
     }
 }
 
@@ -68,27 +71,21 @@
 /* =====================================================
    NODE TYPES
    ===================================================== */
-
-/* Main node (slightly larger) */
 .node.node-main {
     min-width: 180px;
     border-width: 2px;
 }
 
-.node.node-main .node-content {
-    font-size: var(--font-size-lg);
-}
-
-/* Secondary node */
 .node.node-secondary {
     /* Default styles */
 }
 
 /* =====================================================
-   NODE CONTENT – Editable with text styling
+   NODE CONTENT – 18pt default
    ===================================================== */
 .node-content {
-    font-size: var(--font-size-base);
+    font-size: 18px;
+    /* default */
     color: var(--text-primary);
     line-height: 1.5;
     outline: none;
@@ -116,10 +113,10 @@
     content: '';
 }
 
-/* Text styling within content */
+/* Text styling */
 .node-content b,
 .node-content strong {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .node-content i,
@@ -132,66 +129,169 @@
 }
 
 /* =====================================================
-   NODE ACTIONS (visible on hover/selection)
+   ANIMATED TOOLBAR – Playful spring animation
    ===================================================== */
-.node-actions {
+.node-toolbar {
     position: absolute;
-    top: calc(-1 * var(--spacing-lg) - 4px);
+    bottom: calc(100% + 12px);
     left: 50%;
-    transform: translateX(-50%);
     display: flex;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs);
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
     background: var(--surface);
-    backdrop-filter: blur(var(--blur-md));
-    -webkit-backdrop-filter: blur(var(--blur-md));
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+
+    /* Hidden by default */
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--transition-fast);
+    transform: translateX(-50%) translateY(10px) scale(0.9);
+
+    /* Playful spring animation */
+    transition:
+        opacity 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.node:hover .node-actions,
-.node.selected .node-actions {
+/* Toolbar visible state */
+.node-toolbar[data-visible="true"] {
     opacity: 1;
     pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
 }
 
-.node-action-btn {
-    width: 26px;
-    height: 26px;
+/* Toolbar buttons */
+.toolbar-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 2px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease-out;
 }
 
-.node-action-btn:hover {
+.toolbar-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
+    transform: scale(1.05);
 }
 
-.node-action-btn.delete:hover {
+.toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-label {
+    font-family: var(--font-family);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.toolbar-label.italic {
+    font-style: italic;
+}
+
+.toolbar-label.underline {
+    text-decoration: underline;
+}
+
+.toolbar-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.toolbar-icon-small {
+    width: 12px;
+    height: 12px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-default);
+    margin: 0 4px;
+}
+
+/* Font size button */
+.font-size-btn {
+    min-width: 48px;
+}
+
+/* Delete button */
+.delete-btn:hover {
     background: rgba(239, 68, 68, 0.1);
     color: var(--error);
 }
 
-.node-action-btn svg {
-    width: 14px;
-    height: 14px;
+/* =====================================================
+   FONT SIZE DROPDOWN
+   ===================================================== */
+.font-size-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    background: var(--surface);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1001;
+
+    /* Hidden by default */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-5px) scale(0.95);
+
+    transition:
+        opacity 0.2s ease-out,
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Style button active states */
-.node-action-btn.style-btn.active {
-    background: var(--accent);
-    color: white;
+.font-size-dropdown[data-visible="true"] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.font-size-option {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family);
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease-out;
+}
+
+.font-size-option:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+.font-size-option.active {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent);
+    font-weight: 600;
 }
 
 /* =====================================================

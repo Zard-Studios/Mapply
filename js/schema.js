@@ -42,13 +42,15 @@ export function createEmptyMap(title = 'Nuova Mappa') {
 export function createNode({
     type = 'secondary',
     content = '',
+    fontSize = 18,
     x = 400,
     y = 300
 } = {}) {
     return {
         id: generateId('node'),
         type,
-        content,  // HTML content with possible bold/italic/underline
+        content,
+        fontSize,
         x,
         y
     };

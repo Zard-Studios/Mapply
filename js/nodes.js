@@ -1,9 +1,11 @@
 /**
  * nodes.js – Node creation, management, and interactions
- * Handles drag & drop, selection, and editing
  * 
- * SIMPLIFIED: Removed icons, color borders, title requirement
- * Added: Text styling (bold, italic, underline)
+ * Features:
+ * - Animated floating toolbar (appears on focus, hides on blur)
+ * - Text styling: Bold, Italic, Underline, Font Size
+ * - 18pt default font size
+ * - Drag & drop with smooth connections
  */
 
 import { createNode, createConnection } from './schema.js';
@@ -15,9 +17,14 @@ let nodesLayer = null;
 let currentMap = null;
 let selectedNodeId = null;
 let dragState = null;
+let activeToolbar = null; // Track which toolbar is visible
 
 // Callbacks
 let onNodeChange = null;
+
+// Font size presets
+const FONT_SIZES = [14, 18, 24, 32];
+const DEFAULT_FONT_SIZE = 18;
 
 /**
  * Initialize nodes module
@@ -35,6 +42,13 @@ export function initNodes(map, options = {}) {
     // Setup add node button
     document.getElementById('btn-add-node')?.addEventListener('click', () => {
         addNodeAtCenter();
+    });
+
+    // Click outside to hide toolbar
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
+            hideAllToolbars();
+        }
     });
 }
 
@@ -70,31 +84,41 @@ function renderNode(nodeData) {
     node.style.left = `${nodeData.x}px`;
     node.style.top = `${nodeData.y}px`;
 
-    // Simplified node HTML - no icons, no color border
+    // Get stored font size or use default
+    const fontSize = nodeData.fontSize || DEFAULT_FONT_SIZE;
+
+    // Node with animated toolbar
     node.innerHTML = `
-    <div class="node-actions">
-      <button class="node-action-btn style-btn" data-style="bold" aria-label="Grassetto" title="Grassetto (Ctrl+B)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+    <div class="node-toolbar" data-visible="false">
+      <button class="toolbar-btn" data-action="bold" aria-label="Grassetto" title="Grassetto (Ctrl+B)">
+        <span class="toolbar-label">B</span>
+      </button>
+      <button class="toolbar-btn" data-action="italic" aria-label="Corsivo" title="Corsivo (Ctrl+I)">
+        <span class="toolbar-label italic">I</span>
+      </button>
+      <button class="toolbar-btn" data-action="underline" aria-label="Sottolineato" title="Sottolineato (Ctrl+U)">
+        <span class="toolbar-label underline">U</span>
+      </button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn font-size-btn" data-action="fontSize" aria-label="Dimensione testo" title="Dimensione testo">
+        <span class="toolbar-label">${fontSize}</span>
+        <svg class="toolbar-icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <button class="node-action-btn style-btn" data-style="italic" aria-label="Corsivo" title="Corsivo (Ctrl+I)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>
-        </svg>
-      </button>
-      <button class="node-action-btn style-btn" data-style="underline" aria-label="Sottolineato" title="Sottolineato (Ctrl+U)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/>
-        </svg>
-      </button>
-      <button class="node-action-btn delete" aria-label="Elimina nodo" title="Elimina">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn delete-btn" data-action="delete" aria-label="Elimina" title="Elimina nodo">
+        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
         </svg>
       </button>
     </div>
-    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui...">${nodeData.content || ''}</div>
+    <div class="font-size-dropdown" data-visible="false">
+      ${FONT_SIZES.map(size => `
+        <button class="font-size-option ${size === fontSize ? 'active' : ''}" data-size="${size}">${size}pt</button>
+      `).join('')}
+    </div>
+    <div class="node-content" contenteditable="true" spellcheck="false" data-placeholder="Scrivi qui..." style="font-size: ${fontSize}px;">${nodeData.content || ''}</div>
     <div class="node-handle node-handle-top" data-handle="top"></div>
     <div class="node-handle node-handle-bottom" data-handle="bottom"></div>
     <div class="node-handle node-handle-left" data-handle="left"></div>
@@ -111,42 +135,85 @@ function renderNode(nodeData) {
  * Setup event listeners for a node
  */
 function setupNodeEvents(nodeEl, nodeData) {
+    const toolbar = nodeEl.querySelector('.node-toolbar');
+    const contentEl = nodeEl.querySelector('.node-content');
+    const fontDropdown = nodeEl.querySelector('.font-size-dropdown');
+
     // Selection and drag start
     nodeEl.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.node-action-btn') || e.target.closest('.node-handle')) return;
+        if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
+        if (e.target.closest('.node-handle')) return;
 
-        // Allow clicking into contenteditable
+        selectNode(nodeData.id);
+
+        // Don't start drag if clicking contenteditable
         if (e.target.contentEditable === 'true') {
-            selectNode(nodeData.id);
             return;
         }
 
-        selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
     });
 
-    // Delete button
-    nodeEl.querySelector('.node-action-btn.delete')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteNode(nodeData.id);
+    // Show toolbar on focus (content editing)
+    contentEl.addEventListener('focus', () => {
+        showToolbar(toolbar);
     });
 
-    // Text styling buttons
-    nodeEl.querySelectorAll('.style-btn').forEach(btn => {
+    // Hide toolbar on blur (with delay for clicking toolbar buttons)
+    contentEl.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (!document.activeElement?.closest('.node-toolbar') &&
+                !document.activeElement?.closest('.font-size-dropdown')) {
+                hideToolbar(toolbar);
+                hideFontDropdown(fontDropdown);
+            }
+        }, 150);
+    });
+
+    // Toolbar buttons
+    toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent blur
+        });
+
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const style = btn.dataset.style;
-            applyTextStyle(style);
+            const action = btn.dataset.action;
+
+            if (action === 'bold' || action === 'italic' || action === 'underline') {
+                applyTextStyle(action);
+                contentEl.focus();
+            } else if (action === 'fontSize') {
+                toggleFontDropdown(fontDropdown);
+            } else if (action === 'delete') {
+                deleteNode(nodeData.id);
+            }
+        });
+    });
+
+    // Font size options
+    fontDropdown.querySelectorAll('.font-size-option').forEach(option => {
+        option.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+        });
+
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const size = parseInt(option.dataset.size);
+            setNodeFontSize(nodeEl, nodeData, size);
+            hideFontDropdown(fontDropdown);
+            contentEl.focus();
         });
     });
 
     // Content editing
-    const contentEl = nodeEl.querySelector('.node-content');
     contentEl.addEventListener('input', () => {
         updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+        // Update connections after content change (size might change)
+        updateConnections(currentMap);
     });
 
-    // Keyboard shortcuts for text styling
+    // Keyboard shortcuts
     contentEl.addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey) {
             if (e.key === 'b') {
@@ -166,9 +233,78 @@ function setupNodeEvents(nodeEl, nodeData) {
     nodeEl.querySelectorAll('.node-handle').forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-            startConnection(nodeData.id, handle.dataset.handle);
+            startConnection(nodeData.id);
         });
     });
+}
+
+/**
+ * Show toolbar with playful animation
+ */
+function showToolbar(toolbar) {
+    hideAllToolbars();
+    toolbar.dataset.visible = 'true';
+    activeToolbar = toolbar;
+}
+
+/**
+ * Hide toolbar with animation
+ */
+function hideToolbar(toolbar) {
+    toolbar.dataset.visible = 'false';
+    if (activeToolbar === toolbar) {
+        activeToolbar = null;
+    }
+}
+
+/**
+ * Hide all toolbars
+ */
+function hideAllToolbars() {
+    document.querySelectorAll('.node-toolbar[data-visible="true"]').forEach(t => {
+        t.dataset.visible = 'false';
+    });
+    document.querySelectorAll('.font-size-dropdown[data-visible="true"]').forEach(d => {
+        d.dataset.visible = 'false';
+    });
+    activeToolbar = null;
+}
+
+/**
+ * Toggle font size dropdown
+ */
+function toggleFontDropdown(dropdown) {
+    dropdown.dataset.visible = dropdown.dataset.visible === 'true' ? 'false' : 'true';
+}
+
+/**
+ * Hide font dropdown
+ */
+function hideFontDropdown(dropdown) {
+    dropdown.dataset.visible = 'false';
+}
+
+/**
+ * Set node font size
+ */
+function setNodeFontSize(nodeEl, nodeData, size) {
+    const contentEl = nodeEl.querySelector('.node-content');
+    const fontBtn = nodeEl.querySelector('.font-size-btn .toolbar-label');
+    const dropdown = nodeEl.querySelector('.font-size-dropdown');
+
+    contentEl.style.fontSize = `${size}px`;
+    fontBtn.textContent = size;
+
+    // Update active state
+    dropdown.querySelectorAll('.font-size-option').forEach(opt => {
+        opt.classList.toggle('active', parseInt(opt.dataset.size) === size);
+    });
+
+    // Save to data
+    updateNodeField(nodeData.id, 'fontSize', size);
+
+    // Update connections (node size changed)
+    updateConnections(currentMap);
 }
 
 /**
@@ -205,11 +341,9 @@ function startDrag(e, nodeEl, nodeData) {
         const newX = dragState.nodeStartX + dx;
         const newY = dragState.nodeStartY + dy;
 
-        // Update node position visually
         nodeEl.style.left = `${newX}px`;
         nodeEl.style.top = `${newY}px`;
 
-        // Update connections in real-time (reads from DOM)
         updateConnections(currentMap);
     };
 
@@ -223,7 +357,6 @@ function startDrag(e, nodeEl, nodeData) {
         const newX = dragState.nodeStartX + dx;
         const newY = dragState.nodeStartY + dy;
 
-        // Update data
         updateNodeField(dragState.nodeId, 'x', Math.round(newX));
         updateNodeField(dragState.nodeId, 'y', Math.round(newY));
 
@@ -242,7 +375,6 @@ function startDrag(e, nodeEl, nodeData) {
  * Select a node
  */
 export function selectNode(nodeId) {
-    // Deselect previous
     if (selectedNodeId) {
         document.getElementById(selectedNodeId)?.classList.remove('selected');
     }
@@ -256,12 +388,10 @@ export function selectNode(nodeId) {
 
 /**
  * Add a new node at canvas center
- * NO LIMIT on number of nodes
  */
 export function addNodeAtCenter() {
     if (!currentMap) return;
 
-    // Get canvas center
     const container = document.getElementById('canvas-container');
     const rect = container.getBoundingClientRect();
     const center = screenToCanvas(
@@ -269,32 +399,26 @@ export function addNodeAtCenter() {
         rect.top + rect.height / 2
     );
 
-    // Determine type based on whether there's already a main node
     const hasMain = currentMap.nodes.some(n => n.type === 'main');
     const type = !hasMain ? 'main' : 'secondary';
 
-    // Create node (no title requirement, just content)
     const node = createNode({
         type,
         content: '',
+        fontSize: DEFAULT_FONT_SIZE,
         x: Math.round(center.x),
         y: Math.round(center.y)
     });
 
-    // Add to map
     currentMap.nodes.push(node);
-
-    // Render and select
     renderNode(node);
     selectNode(node.id);
 
-    // Focus the content for immediate editing
     setTimeout(() => {
         const contentEl = document.querySelector(`#${node.id} .node-content`);
         contentEl?.focus();
     }, 50);
 
-    // Notify change
     onNodeChange?.();
 }
 
@@ -304,29 +428,21 @@ export function addNodeAtCenter() {
 export function deleteNode(nodeId) {
     if (!currentMap) return;
 
-    // Remove from nodes array
     const index = currentMap.nodes.findIndex(n => n.id === nodeId);
     if (index === -1) return;
 
     currentMap.nodes.splice(index, 1);
-
-    // Remove all connections involving this node
     currentMap.connections = currentMap.connections.filter(
         c => c.from !== nodeId && c.to !== nodeId
     );
 
-    // Remove from DOM
     document.getElementById(nodeId)?.remove();
 
-    // Clear selection
     if (selectedNodeId === nodeId) {
         selectedNodeId = null;
     }
 
-    // Update connections
     updateConnections(currentMap);
-
-    // Notify change
     onNodeChange?.();
 }
 
@@ -346,14 +462,13 @@ function updateNodeField(nodeId, field, value) {
 /**
  * Start creating a connection
  */
-function startConnection(fromNodeId, fromHandle) {
+function startConnection(fromNodeId) {
     const container = document.getElementById('canvas-container');
     container.classList.add('connecting');
 
     const onMouseUp = (e) => {
         container.classList.remove('connecting');
 
-        // Check if dropped on another node's handle
         const target = e.target.closest('.node-handle');
         if (target) {
             const toNodeEl = target.closest('.node');
@@ -374,7 +489,6 @@ function startConnection(fromNodeId, fromHandle) {
 function createNodeConnection(fromId, toId) {
     if (!currentMap) return;
 
-    // Check if connection already exists
     const exists = currentMap.connections.some(
         c => (c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId)
     );
