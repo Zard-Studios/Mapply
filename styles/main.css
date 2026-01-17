@@ -235,6 +235,38 @@ body {
     transform: scale(0.95);
 }
 
+/* Floating Actions Container */
+.floating-actions {
+    position: absolute;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    z-index: var(--z-floating);
+}
+
+.floating-actions .btn-floating {
+    position: relative;
+    bottom: auto;
+    right: auto;
+}
+
+.btn-floating-secondary {
+    width: 48px;
+    height: 48px;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--accent);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-floating-secondary:hover {
+    background: var(--surface-hover);
+    box-shadow: var(--shadow-lg);
+    transform: scale(1.05);
+}
+
 /* =====================================================
    ICONS
    ===================================================== */
@@ -557,13 +589,16 @@ body {
         transform: translateX(0);
     }
 }
+
 /* Selection Box for Rectangular Selection */
 .selection-box {
     position: fixed;
     border: 1px solid var(--accent);
-    background-color: rgba(99, 102, 241, 0.1); /* Low opacity accent */
+    background-color: rgba(99, 102, 241, 0.1);
+    /* Low opacity accent */
     border-radius: 4px;
-    pointer-events: none; /* Let events pass through */
+    pointer-events: none;
+    /* Let events pass through */
     z-index: 9999;
     display: none;
 }

@@ -114,12 +114,6 @@
             </path>
           </svg>
         </button>
-        <button id="btn-ai-toggle" class="btn-icon" title="AI Assistant" data-tooltip="AI Assistant">
-          <!-- 4-Point Star / Sparkle Icon -->
-          <svg viewBox="0 0 24 24" fill="none" class="icon" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"></path>
-          </svg>
-        </button>
       </div>
     </header>
 
@@ -167,13 +161,21 @@
         </svg>
 
 
-        <!-- Add node button (floating) -->
-        <button id="btn-add-node" class="btn-floating" aria-label="Aggiungi nodo">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
+        <!-- Floating Action Buttons -->
+        <div class="floating-actions">
+          <button id="btn-ai-toggle" class="btn-floating btn-floating-secondary" aria-label="AI Assistant"
+            title="Chiedi all'AI">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"></path>
+            </svg>
+          </button>
+          <button id="btn-add-node" class="btn-floating" aria-label="Aggiungi nodo" title="Nuovo Nodo (Q)">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
 
         <!-- Zoom controls -->
         <div class="zoom-controls">
@@ -363,10 +365,9 @@
       </div>
       <div class="input-row">
         <textarea id="ai-prompt" placeholder="Descrivi la mappa o fai una domanda..." rows="1"></textarea>
-        <button id="btn-send-ai" class="btn-primary btn-icon" title="Invia">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        <button id="btn-send-ai" title="Invia">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
         </button>
       </div>
