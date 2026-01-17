@@ -617,7 +617,14 @@ function startDrag(e, nodeEl, nodeData) {
 export function selectNode(nodeId) {
     if (selectedNodeId) document.getElementById(selectedNodeId)?.classList.remove('selected');
     selectedNodeId = nodeId;
-    if (nodeId) document.getElementById(nodeId)?.classList.add('selected');
+    if (nodeId) {
+        const el = document.getElementById(nodeId);
+        if (el) {
+            el.classList.add('selected');
+            // Bring to front
+            el.parentNode.appendChild(el);
+        }
+    }
 }
 
 /**
