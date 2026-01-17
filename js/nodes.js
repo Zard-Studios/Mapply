@@ -44,10 +44,27 @@ export function initNodes(map, options = {}) {
         addNodeAtCenter();
     });
 
-    // Click outside to hide toolbar
+    // Click outside to hide toolbar and deselect
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.node') && !e.target.closest('.node-toolbar')) {
             hideAllToolbars();
+            // Deselect node when clicking outside
+            if (selectedNodeId && !e.target.closest('.connection-path')) {
+                selectNode(null);
+            }
+        }
+    });
+
+    // Delete selected node with Backspace or Delete key
+    document.addEventListener('keydown', (e) => {
+        if ((e.key === 'Backspace' || e.key === 'Delete') && selectedNodeId) {
+            // Don't delete if user is editing text
+            const active = document.activeElement;
+            if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                return;
+            }
+            e.preventDefault();
+            deleteNode(selectedNodeId);
         }
     });
 }
@@ -143,9 +160,13 @@ function setupNodeEvents(nodeEl, nodeData) {
     contentEl.setAttribute('contenteditable', 'false');
 
     // Single click = select and prepare for drag
+    // BUT: if spacebar is held, let canvas handle pan instead
     nodeEl.addEventListener('mousedown', (e) => {
         if (e.target.closest('.node-toolbar') || e.target.closest('.font-size-dropdown')) return;
         if (e.target.closest('.node-handle')) return;
+
+        // If spacebar is held (pan mode), don't start drag - let canvas handle it
+        if (window.isSpacePanMode) return;
 
         selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
@@ -343,6 +364,12 @@ function applyTextStyle(style) {
  * Start dragging a node
  */
 function startDrag(e, nodeEl, nodeData) {
+    // Cancel any existing drag first
+    if (dragState) {
+        const prevEl = document.getElementById(dragState.nodeId);
+        prevEl?.classList.remove('dragging');
+    }
+
     const currentX = parseFloat(nodeEl.style.left) || nodeData.x;
     const currentY = parseFloat(nodeEl.style.top) || nodeData.y;
 
@@ -359,6 +386,10 @@ function startDrag(e, nodeEl, nodeData) {
     const onMouseMove = (moveEvent) => {
         if (!dragState) return;
 
+        // ALWAYS get the element by ID to avoid stale references
+        const el = document.getElementById(dragState.nodeId);
+        if (!el) return;
+
         const { scale } = window.canvasTransform || { scale: 1 };
         const dx = (moveEvent.clientX - dragState.startX) / scale;
         const dy = (moveEvent.clientY - dragState.startY) / scale;
@@ -366,14 +397,17 @@ function startDrag(e, nodeEl, nodeData) {
         const newX = dragState.nodeStartX + dx;
         const newY = dragState.nodeStartY + dy;
 
-        nodeEl.style.left = `${newX}px`;
-        nodeEl.style.top = `${newY}px`;
+        el.style.left = `${newX}px`;
+        el.style.top = `${newY}px`;
 
         updateConnections(currentMap);
     };
 
     const onMouseUp = (upEvent) => {
         if (!dragState) return;
+
+        // ALWAYS get the element by ID
+        const el = document.getElementById(dragState.nodeId);
 
         const { scale } = window.canvasTransform || { scale: 1 };
         const dx = (upEvent.clientX - dragState.startX) / scale;
@@ -385,7 +419,7 @@ function startDrag(e, nodeEl, nodeData) {
         updateNodeField(dragState.nodeId, 'x', Math.round(newX));
         updateNodeField(dragState.nodeId, 'y', Math.round(newY));
 
-        nodeEl.classList.remove('dragging');
+        el?.classList.remove('dragging');
         dragState = null;
 
         document.removeEventListener('mousemove', onMouseMove);
@@ -486,13 +520,14 @@ function updateNodeField(nodeId, field, value) {
 
 /**
  * Start creating a connection with live preview
+ * If dropped on empty space, can delete existing connections
  */
 function startConnection(fromNodeId) {
     const container = document.getElementById('canvas-container');
     container.classList.add('connecting');
 
     // Import and start preview
-    import('./connections.js').then(({ startConnectionPreview, endConnectionPreview }) => {
+    import('./connections.js').then(({ startConnectionPreview, endConnectionPreview, deleteConnectionsFromNode }) => {
         startConnectionPreview(fromNodeId);
 
         const onMouseUp = (e) => {
@@ -506,6 +541,8 @@ function startConnection(fromNodeId) {
                     createNodeConnection(fromNodeId, toNodeEl.id);
                 }
             }
+            // Dropped on empty space - could delete connections (optional feature)
+            // For now, just cancel the operation
 
             document.removeEventListener('mouseup', onMouseUp);
         };

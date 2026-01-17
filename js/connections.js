@@ -111,12 +111,11 @@ function createConnectionPath(conn, containerRect) {
         path.classList.remove('highlighted');
     });
 
-    // Click to delete
-    path.addEventListener('click', (e) => {
+    // Right-click to delete connection
+    path.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        if (confirm('Eliminare questo collegamento?')) {
-            deleteConnection(conn.id);
-        }
+        deleteConnection(conn.id);
     });
 
     return path;

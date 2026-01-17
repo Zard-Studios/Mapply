@@ -64,6 +64,7 @@ function setupPanning() {
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && !e.repeat && !isEditingText()) {
             isSpacePressed = true;
+            window.isSpacePanMode = true; // Expose for nodes.js
             canvasContainer.style.cursor = 'grab';
             e.preventDefault();
         }
@@ -72,16 +73,19 @@ function setupPanning() {
     document.addEventListener('keyup', (e) => {
         if (e.code === 'Space') {
             isSpacePressed = false;
+            window.isSpacePanMode = false; // Expose for nodes.js
             canvasContainer.style.cursor = '';
         }
     });
 
-    // Mouse panning
+    // Mouse panning - use CAPTURE phase to intercept before nodes
+    // This is critical for spacebar pan to work over nodes
     canvasContainer.addEventListener('mousedown', (e) => {
         // Middle mouse button works ANYWHERE
         if (e.button === 1) {
             startPan(e.clientX, e.clientY);
             e.preventDefault();
+            e.stopPropagation(); // Don't let nodes get this event
             return;
         }
         // Left button with spacebar = pan anywhere (Figma style)
@@ -89,6 +93,7 @@ function setupPanning() {
             startPan(e.clientX, e.clientY);
             canvasContainer.style.cursor = 'grabbing';
             e.preventDefault();
+            e.stopPropagation(); // CRITICAL: Stop nodes from getting this event
             return;
         }
         // Left button only on canvas background (not on nodes)
@@ -96,7 +101,7 @@ function setupPanning() {
             startPan(e.clientX, e.clientY);
             e.preventDefault();
         }
-    });
+    }, true); // CAPTURE PHASE - intercepts BEFORE bubbling
 
     document.addEventListener('mousemove', (e) => {
         if (isPanning) {
