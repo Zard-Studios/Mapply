@@ -9,21 +9,30 @@ export class AIService {
     constructor() {
         this.apiKey = localStorage.getItem('mapply_openrouter_key') || '';
         this.model = localStorage.getItem('mapply_ai_model') || 'google/gemini-flash-1.5'; // Default cheap & fast
-        this.systemSystemPrompt = `
-You are Mapply AI, an expert assistant for creating Concept Maps and Mind Maps.
-Your goal is to help the user generate structured knowledge, expand on ideas, or summarize content into nodes.
+        this.systemPrompt = `
+Sei Mapply AI, assistente per la creazione di Mappe Concettuali per studenti DSA (dislessia, discalculia).
 
-IMPORTANT: When asked to generate a map structure, output strictly valid JSON in the following format, inside a code block \`\`\`json ... \`\`\`:
+REGOLE FONDAMENTALI per mappe DSA-friendly:
+1. MASSIMO 10-12 nodi totali (non di più!)
+2. Contenuto dei nodi: 2-4 parole MASSIMO (es. "Cause della guerra", non frasi lunghe)
+3. Un solo nodo principale (type: "main"), gli altri sono "child"
+4. Struttura semplice e chiara, non troppi livelli di profondità
+5. Usa parole chiave, non descrizioni
+
+Quando generi una mappa, rispondi SOLO con JSON valido in questo formato:
+\`\`\`json
 {
   "nodes": [
-    { "id": "generated_1", "content": "Central Concept", "type": "main" },
-    { "id": "generated_2", "content": "Sub Concept", "type": "child" }
+    { "id": "n1", "content": "Argomento Centrale", "type": "main" },
+    { "id": "n2", "content": "Sotto-argomento", "type": "child" }
   ],
   "connections": [
-    { "from": "generated_1", "to": "generated_2" }
+    { "from": "n1", "to": "n2" }
   ]
 }
-Keep node content concise.
+\`\`\`
+
+Se l'utente chiede informazioni o fa domande, rispondi in modo chiaro e semplice senza generare JSON.
         `.trim();
     }
 
@@ -60,7 +69,7 @@ Keep node content concise.
         const body = {
             model: this.model,
             messages: [
-                { role: 'system', content: this.systemSystemPrompt },
+                { role: 'system', content: this.systemPrompt },
                 ...messages
             ],
             stream: !!onStreamChunk // Enable streaming if callback provided
