@@ -175,9 +175,21 @@ function setupNodeEvents(nodeEl, nodeData) {
         if (e.target.closest('.node-toolbar')) return;
         if (e.target.closest('.node-handle')) return;
         if (window.isSpacePanMode) return;
-        if (e.target.closest('.node-content') && contentEl.getAttribute('contenteditable') === 'true') {
+
+        const isContent = !!e.target.closest('.node-content');
+        const isEditable = contentEl.getAttribute('contenteditable') === 'true';
+
+        // If clicking inside editable content, keep focus and let browser handle it (selection)
+        if (isContent && isEditable) {
             return;
         }
+
+        // Click on padding/borders while in edit mode:
+        // Prevent default to avoid blurring the text, but allow dragging the node
+        if (isEditable && !isContent) {
+            e.preventDefault();
+        }
+
         selectNode(nodeData.id);
         startDrag(e, nodeEl, nodeData);
     });
@@ -353,6 +365,9 @@ function setupNodeEvents(nodeEl, nodeData) {
  * Enter edit mode
  */
 function enterEditMode(contentEl, toolbar) {
+    const nodeEl = contentEl.closest('.node');
+    if (nodeEl) nodeEl.classList.add('editing');
+
     contentEl.setAttribute('contenteditable', 'true');
     contentEl.focus();
     const range = document.createRange();
@@ -382,6 +397,7 @@ function showToolbar(toolbar) {
 function hideToolbar(toolbar) {
     if (!toolbar) return;
     toolbar.dataset.visible = 'false';
+    toolbar.closest('.node')?.classList.remove('editing');
     if (activeToolbar === toolbar) activeToolbar = null;
 }
 
@@ -402,6 +418,7 @@ function hideAllToolbars(excludeNode = null) {
         const node = el.closest('.node');
         if (excludeNode && node === excludeNode) return;
         el.setAttribute('contenteditable', 'false');
+        node.classList.remove('editing');
     });
     if (!excludeNode) {
         activeToolbar = null;
@@ -525,7 +542,13 @@ function updateToolbarState(toolbar, contentEl) {
         let container = range.startContainer;
         if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
 
-        if (container && contentEl.contains(container)) {
+        // If we are at the edge of contentEl, container might be nodeEl or nodesLayer
+        // Ensure we at least point to contentEl for style detection
+        if (!contentEl.contains(container)) {
+            container = contentEl;
+        }
+
+        if (container && (contentEl.contains(container) || container === contentEl)) {
             const computedStyle = window.getComputedStyle(container);
 
             // FONT SIZE: Climb up looking for explicit 'pt'
