@@ -113,27 +113,24 @@
       <!-- CANVAS AREA -->
       <div id="canvas-container" class="canvas-container">
 
-        <!-- VIEWPORT (Single transform container) -->
+        <!-- VIEWPORT (transforms nodes only) -->
         <div id="viewport" class="viewport">
-
-          <!-- SVG layer for connections -->
-          <svg id="connections-layer" class="connections-layer">
-            <defs>
-              <!-- Gradient for connections -->
-              <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" style="stop-color: var(--accent)" />
-                <stop offset="100%" style="stop-color: var(--accent-secondary)" />
-              </linearGradient>
-            </defs>
-            <!-- Connection paths will be injected here -->
-          </svg>
-
           <!-- Nodes layer -->
           <div id="nodes-layer" class="nodes-layer">
             <!-- Nodes will be injected here -->
           </div>
-
         </div>
+
+        <!-- SVG layer for connections (NOT transformed, uses screen coords) -->
+        <svg id="connections-layer" class="connections-layer">
+          <defs>
+            <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color: var(--accent)" />
+              <stop offset="100%" style="stop-color: var(--accent-secondary)" />
+            </linearGradient>
+          </defs>
+        </svg>
+
 
         <!-- Add node button (floating) -->
         <button id="btn-add-node" class="btn-floating" aria-label="Aggiungi nodo">

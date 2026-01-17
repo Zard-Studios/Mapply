@@ -32,7 +32,7 @@
 }
 
 /* =====================================================
-   VIEWPORT (Single Transform Container)
+   VIEWPORT (Transform Container for Nodes)
    ===================================================== */
 .viewport {
     position: absolute;
@@ -41,14 +41,12 @@
     width: 100%;
     height: 100%;
     transform-origin: 0 0;
-    /* This receives the JS transform */
-    width: 100%;
-    height: 100%;
     z-index: 10;
 }
 
 /* =====================================================
-   CONNECTIONS LAYER (SVG) - Inside Viewport
+   CONNECTIONS LAYER (SVG) - NOT Transformed
+   Uses screen coordinates, BELOW nodes for interaction
    ===================================================== */
 .connections-layer {
     position: absolute;
@@ -56,10 +54,10 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: var(--z-connections);
+    z-index: 5;
+    /* BELOW viewport so nodes are clickable */
     pointer-events: none;
     overflow: visible;
-    /* No transform here - driven by parent viewport */
 }
 
 /* =====================================================
@@ -75,7 +73,7 @@
     pointer-events: none;
 }
 
-.node-card {
+.node {
     pointer-events: auto;
     /* Re-enable clicks for nodes */
 }

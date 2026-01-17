@@ -1,33 +1,40 @@
 /**
  * connections.js – SVG curve connections between nodes
- * FigJam-style: connects from CENTER to CENTER
+ * React Flow style: Uses SCREEN SPACE coordinates (getBoundingClientRect)
  * 
- * FIXED: Uses CANVAS space coordinates + CSS Transform + non-scaling-stroke
+ * The SVG layer is NOT transformed - it stays fixed to the screen.
+ * Connections are drawn using screen coordinates of the nodes.
  */
 
 let connectionsLayer = null;
+let canvasContainer = null;
 
 /**
  * Initialize connections module
  */
 export function initConnections() {
     connectionsLayer = document.getElementById('connections-layer');
+    canvasContainer = document.getElementById('canvas-container');
 }
 
 /**
  * Update all connections based on current DOM node positions
+ * Uses getBoundingClientRect for SCREEN SPACE coordinates
  * @param {Object} map - Current map data (for connection list only)
  */
 export function updateConnections(map) {
-    if (!connectionsLayer || !map) return;
+    if (!connectionsLayer || !map || !canvasContainer) return;
 
     // Clear existing paths
     const existingPaths = connectionsLayer.querySelectorAll('.connection-path');
     existingPaths.forEach(path => path.remove());
 
+    // Get canvas container bounds for relative positioning
+    const containerRect = canvasContainer.getBoundingClientRect();
+
     // Draw each connection
     map.connections.forEach(conn => {
-        const path = createConnectionPath(conn);
+        const path = createConnectionPath(conn, containerRect);
         if (path) {
             connectionsLayer.appendChild(path);
         }
@@ -36,40 +43,30 @@ export function updateConnections(map) {
 
 /**
  * Create an SVG path element for a connection
- * Uses CANVAS space coordinates (CSS transform handles zoom)
+ * Uses SCREEN SPACE coordinates (relative to canvas container)
  * @param {Object} conn - Connection data
+ * @param {DOMRect} containerRect - Canvas container bounding rect
  * @returns {SVGPathElement|null}
  */
-function createConnectionPath(conn) {
+function createConnectionPath(conn, containerRect) {
     const fromEl = document.getElementById(conn.from);
     const toEl = document.getElementById(conn.to);
 
     if (!fromEl || !toEl) return null;
 
-    // Read positions from DOM (canvas space)
-    const fromX = parseFloat(fromEl.style.left) || 0;
-    const fromY = parseFloat(fromEl.style.top) || 0;
-    const toX = parseFloat(toEl.style.left) || 0;
-    const toY = parseFloat(toEl.style.top) || 0;
+    // Get SCREEN positions using getBoundingClientRect
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
 
-    const fromRect = {
-        width: fromEl.offsetWidth,
-        height: fromEl.offsetHeight
-    };
-    const toRect = {
-        width: toEl.offsetWidth,
-        height: toEl.offsetHeight
-    };
-
-    // Calculate centers in CANVAS space
+    // Calculate centers in SCREEN space, relative to canvas container
     const fromCenter = {
-        x: fromX + fromRect.width / 2,
-        y: fromY + fromRect.height / 2
+        x: fromRect.left + fromRect.width / 2 - containerRect.left,
+        y: fromRect.top + fromRect.height / 2 - containerRect.top
     };
 
     const toCenter = {
-        x: toX + toRect.width / 2,
-        y: toY + toRect.height / 2
+        x: toRect.left + toRect.width / 2 - containerRect.left,
+        y: toRect.top + toRect.height / 2 - containerRect.top
     };
 
     // Create smooth Bezier curve
@@ -96,8 +93,8 @@ function createConnectionPath(conn) {
 
 /**
  * Create a smooth Bezier curve path between two points
- * @param {Object} from - Start point
- * @param {Object} to - End point
+ * @param {Object} from - Start point (screen space)
+ * @param {Object} to - End point (screen space)
  * @returns {string} SVG path d attribute
  */
 function createBezierPath(from, to) {

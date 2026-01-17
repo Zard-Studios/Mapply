@@ -189,14 +189,19 @@ function zoomAt(clientX, clientY, delta) {
 }
 
 /**
- * Apply the current transform to the layers
+ * Apply the current transform to the viewport
+ * Connections layer is NOT transformed (uses screen coords)
  */
 function applyTransform() {
     const transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-    nodesLayer.style.transform = transform;
 
-    // SVG connections layer transforms with nodes
-    connectionsLayer.style.transform = transform;
+    // Only transform the viewport (which contains nodes)
+    if (viewport) {
+        viewport.style.transform = transform;
+    }
+
+    // Connections layer is NOT transformed - it uses screen coordinates
+    // connectionsLayer.style.transform = transform; // REMOVED
 
     if (onTransformChange) {
         onTransformChange({ scale, offsetX, offsetY });
