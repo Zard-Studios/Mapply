@@ -28,7 +28,7 @@
 
     /* Interaction */
     cursor: grab;
-    user-select: none;
+    /* user-select handled by node-content */
     transition:
         transform var(--transition-fast),
         box-shadow var(--transition-fast),
@@ -190,6 +190,12 @@
 
 .toolbar-btn:active {
     transform: scale(0.95);
+}
+
+/* Active state (formatting is applied) */
+.toolbar-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent);
 }
 
 .toolbar-label {

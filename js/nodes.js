@@ -257,6 +257,15 @@ function setupNodeEvents(nodeEl, nodeData) {
         }
     });
 
+    // Update toolbar state when selection changes
+    contentEl.addEventListener('mouseup', () => {
+        updateToolbarState(toolbar, contentEl);
+    });
+
+    contentEl.addEventListener('keyup', () => {
+        updateToolbarState(toolbar, contentEl);
+    });
+
     // Connection handles
     nodeEl.querySelectorAll('.node-handle').forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
@@ -392,6 +401,50 @@ function setNodeFontSize(nodeEl, nodeData, size) {
  */
 function applyTextStyle(style) {
     document.execCommand(style, false, null);
+}
+
+/**
+ * Update toolbar button states based on current selection
+ * Shows if text is bold, italic, underlined, and its font size
+ */
+function updateToolbarState(toolbar, contentEl) {
+    if (!toolbar) return;
+
+    // Check formatting state using queryCommandState
+    const isBold = document.queryCommandState('bold');
+    const isItalic = document.queryCommandState('italic');
+    const isUnderline = document.queryCommandState('underline');
+
+    // Update button active states
+    const boldBtn = toolbar.querySelector('[data-action="bold"]');
+    const italicBtn = toolbar.querySelector('[data-action="italic"]');
+    const underlineBtn = toolbar.querySelector('[data-action="underline"]');
+
+    boldBtn?.classList.toggle('active', isBold);
+    italicBtn?.classList.toggle('active', isItalic);
+    underlineBtn?.classList.toggle('active', isUnderline);
+
+    // Try to get font size of current selection
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        let container = range.commonAncestorContainer;
+
+        // Get the element (not text node)
+        if (container.nodeType === Node.TEXT_NODE) {
+            container = container.parentElement;
+        }
+
+        // Find font size
+        const fontSize = window.getComputedStyle(container).fontSize;
+        const sizeNum = parseInt(fontSize);
+
+        // Update font size button
+        const fontBtn = toolbar.querySelector('.font-size-btn .toolbar-label');
+        if (fontBtn && sizeNum) {
+            fontBtn.textContent = sizeNum;
+        }
+    }
 }
 
 /**
