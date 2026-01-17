@@ -1121,7 +1121,10 @@ export function addNodeAtCenter() {
 /**
  * Add node at specific canvas location
  */
-export function addNodeAtLocation(x, y) {
+/**
+ * Add node at specific canvas location
+ */
+export function addNodeAtLocation(x, y, animate = true) {
     if (!currentMap) return;
     const hasMain = currentMap.nodes.some(n => n.type === 'main');
     const type = !hasMain ? 'main' : 'secondary';
@@ -1133,7 +1136,7 @@ export function addNodeAtLocation(x, y) {
         y: Math.round(y)
     });
     currentMap.nodes.push(node);
-    renderNode(node);
+    renderNode(node, animate);
     selectNode(node.id);
 
     // Auto edit mode
@@ -1235,12 +1238,9 @@ function startConnection(fromNodeId) {
                 // Drop on empty space -> Create new node
                 const { x, y } = screenToCanvas(e.clientX, e.clientY);
                 // Center node on mouse (roughly 160x80)
-                const newNode = addNodeAtLocation(x - 80, y - 40);
-
-                // Allow DOM to update before drawing connection to ensure correct endpoint
-                requestAnimationFrame(() => {
-                    createNodeConnection(fromNodeId, newNode.id);
-                });
+                // Pass animate=false to prevent connection misalignment
+                const newNode = addNodeAtLocation(x - 80, y - 40, false);
+                createNodeConnection(fromNodeId, newNode.id);
             }
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
