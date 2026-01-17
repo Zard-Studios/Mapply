@@ -292,10 +292,10 @@ async function createMapFromAI(mapData) {
         childrenOf.get(conn.from).push(conn.to);
     });
 
-    // Layout constants
-    const nodeWidth = 200;
-    const horizontalSpacing = 280;
-    const verticalSpacing = 150;
+    // Layout constants - MORE SPACING!
+    const nodeWidth = 220;
+    const horizontalSpacing = 350; // Was 280
+    const verticalSpacing = 200;   // Was 150
 
     // LEVEL 1: Main node at top center
     if (mainNode) {
@@ -338,7 +338,7 @@ async function createMapFromAI(mapData) {
             const childData = childNodes.find(n => n.id === childId);
             if (!childData) return;
 
-            const childY = secondaryY + verticalSpacing + childIndex * 120;
+            const childY = secondaryY + verticalSpacing + childIndex * 160; // Was 120
             const newNode = createNode({
                 content: parseMarkdownToHTML(childData.content),
                 type: 'child',
@@ -365,6 +365,14 @@ async function createMapFromAI(mapData) {
 
     // Render everything
     nodesModule.renderAllNodes();
+
+    // Force connection update after DOM settles
+    setTimeout(async () => {
+        const { updateConnections } = await import('../connections.js');
+        const { getCurrentMap } = await import('../app.js');
+        const map = getCurrentMap();
+        if (map) updateConnections(map);
+    }, 100);
 
     return { nodesCreated };
 }
