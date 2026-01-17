@@ -626,8 +626,12 @@ function updateToolbarState(toolbar, contentEl) {
             }
 
             // Fallback to computed px -> pt (1px = 0.75pt)
+            // Fallback: If no explicit inline style found, trust the computed style of the NEAREST element
             if (sizePt === 0) {
+                // computedStyle is already from 'container' (the immediate element/parent of text)
+                // So this should be accurate to what is clicked.
                 const px = parseFloat(computedStyle.fontSize);
+                // Standard browser px is 96dpi, pt is 72dpi -> 1px = 0.75pt
                 sizePt = Math.round(px * 0.75);
             }
 
