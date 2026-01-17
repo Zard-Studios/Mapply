@@ -117,12 +117,14 @@ function renderNode(nodeData) {
         <span class="toolbar-label underline">U</span>
       </button>
       <div class="toolbar-divider"></div>
-      <button class="toolbar-btn font-size-btn" data-action="fontSize" aria-label="Dimensione testo" title="Dimensione testo">
-        <span class="toolbar-label">${fontSize}</span>
-        <svg class="toolbar-icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
+      <div class="font-size-control">
+        <input type="number" class="font-size-input" value="${fontSize}" min="8" max="72" title="Digita dimensione">
+        <button class="toolbar-btn font-size-arrow" data-action="fontDropdown" aria-label="Scegli dimensione" title="Scegli dimensione">
+          <svg class="toolbar-icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
       <div class="toolbar-divider"></div>
       <button class="toolbar-btn delete-btn" data-action="delete" aria-label="Elimina" title="Elimina nodo">
         <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -198,7 +200,7 @@ function setupNodeEvents(nodeEl, nodeData) {
         }, 150);
     });
 
-    // Toolbar buttons
+    // Toolbar buttons (B, I, U, delete)
     toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
         btn.addEventListener('mousedown', (e) => {
             e.preventDefault(); // Prevent blur
@@ -210,8 +212,10 @@ function setupNodeEvents(nodeEl, nodeData) {
 
             if (action === 'bold' || action === 'italic' || action === 'underline') {
                 applyTextStyle(action);
+                // Update toolbar state immediately
+                updateToolbarState(toolbar, contentEl);
                 contentEl.focus();
-            } else if (action === 'fontSize') {
+            } else if (action === 'fontDropdown') {
                 toggleFontDropdown(fontDropdown);
             } else if (action === 'delete') {
                 deleteNode(nodeData.id);
@@ -219,7 +223,34 @@ function setupNodeEvents(nodeEl, nodeData) {
         });
     });
 
-    // Font size options
+    // Font size INPUT (manual entry)
+    const fontInput = toolbar.querySelector('.font-size-input');
+    if (fontInput) {
+        fontInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); // Don't trigger drag
+        });
+
+        fontInput.addEventListener('change', (e) => {
+            const size = parseInt(e.target.value);
+            if (size >= 8 && size <= 72) {
+                setNodeFontSize(nodeEl, nodeData, size);
+                contentEl.focus();
+            }
+        });
+
+        fontInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const size = parseInt(e.target.value);
+                if (size >= 8 && size <= 72) {
+                    setNodeFontSize(nodeEl, nodeData, size);
+                    contentEl.focus();
+                }
+            }
+        });
+    }
+
+    // Font size dropdown options
     fontDropdown.querySelectorAll('.font-size-option').forEach(option => {
         option.addEventListener('mousedown', (e) => {
             e.preventDefault();
@@ -229,6 +260,8 @@ function setupNodeEvents(nodeEl, nodeData) {
             e.stopPropagation();
             const size = parseInt(option.dataset.size);
             setNodeFontSize(nodeEl, nodeData, size);
+            // Update input value too
+            if (fontInput) fontInput.value = size;
             hideFontDropdown(fontDropdown);
             contentEl.focus();
         });
@@ -439,10 +472,10 @@ function updateToolbarState(toolbar, contentEl) {
         const fontSize = window.getComputedStyle(container).fontSize;
         const sizeNum = parseInt(fontSize);
 
-        // Update font size button
-        const fontBtn = toolbar.querySelector('.font-size-btn .toolbar-label');
-        if (fontBtn && sizeNum) {
-            fontBtn.textContent = sizeNum;
+        // Update font size INPUT
+        const fontInput = toolbar.querySelector('.font-size-input');
+        if (fontInput && sizeNum) {
+            fontInput.value = sizeNum;
         }
     }
 }
