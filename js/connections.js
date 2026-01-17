@@ -88,12 +88,12 @@ function createConnectionPath(conn, containerRect) {
         y: toRect.top + toRect.height / 2 - containerRect.top
     };
 
-    // Calculate EDGE points (where the line actually touches the node border)
-    const fromEdge = getEdgePoint(fromCenter, toCenter, fromRect, containerRect);
-    const toEdge = getEdgePoint(toCenter, fromCenter, toRect, containerRect);
+    // Calculate EDGE points (FigJam style: snap to side centers)
+    const fromAnchor = getAnchorPoint(fromRect, toRect, containerRect);
+    const toAnchor = getAnchorPoint(toRect, fromRect, containerRect);
 
-    // Create smooth Bezier curve from edge to edge
-    const d = createBezierPath(fromEdge, toEdge);
+    // Create smooth Bezier curve from anchor to anchor
+    const d = createBezierPath(fromAnchor, toAnchor);
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('class', 'connection-path');
@@ -122,57 +122,54 @@ function createConnectionPath(conn, containerRect) {
 }
 
 /**
- * Calculate the point where a line from center to target intersects the node border
- * @param {Object} center - Center point of this node
- * @param {Object} target - Target point (center of other node)
- * @param {DOMRect} nodeRect - Bounding rect of this node
- * @param {DOMRect} containerRect - Container rect for offset
- * @returns {Object} Edge point {x, y}
+ * Calculate the anchor point (center of one of the 4 sides)
+ * @param {DOMRect} nodeRect - The node to get anchor from
+ * @param {DOMRect} targetRect - The node/point we are connecting to
+ * @param {DOMRect} containerRect - Canvas container for offset
+ * @returns {Object} {x, y, side}
  */
-function getEdgePoint(center, target, nodeRect, containerRect) {
-    const dx = target.x - center.x;
-    const dy = target.y - center.y;
-
-    if (dx === 0 && dy === 0) return center;
-
-    // Node dimensions in screen space
-    const halfWidth = (nodeRect.width / 2);
-    const halfHeight = (nodeRect.height / 2);
-
-    // Calculate intersection with node border
-    const angle = Math.atan2(dy, dx);
-
-    // Check which edge we intersect
-    const tanAngle = Math.abs(dy / (dx || 0.001));
-    const aspectRatio = halfHeight / halfWidth;
-
-    let edgeX, edgeY;
-
-    if (tanAngle < aspectRatio) {
-        // Intersects left or right edge
-        edgeX = dx > 0 ? halfWidth : -halfWidth;
-        edgeY = edgeX * Math.tan(angle);
-    } else {
-        // Intersects top or bottom edge
-        edgeY = dy > 0 ? halfHeight : -halfHeight;
-        edgeX = edgeY / Math.tan(angle);
-    }
-
-    // Add small padding from edge
-    const padding = 4;
-    const length = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
-    const scale = (length - padding) / length;
-
-    return {
-        x: center.x + edgeX * scale,
-        y: center.y + edgeY * scale
+function getAnchorPoint(nodeRect, targetRect, containerRect) {
+    const from = {
+        cx: nodeRect.left + nodeRect.width / 2 - containerRect.left,
+        cy: nodeRect.top + nodeRect.height / 2 - containerRect.top,
+        w: nodeRect.width,
+        h: nodeRect.height
     };
+
+    // Target can be a rect or just a point (for preview)
+    const to = targetRect.left !== undefined ? {
+        cx: targetRect.left + targetRect.width / 2 - containerRect.left,
+        cy: targetRect.top + targetRect.height / 2 - containerRect.top
+    } : {
+        cx: targetRect.x,
+        cy: targetRect.y
+    };
+
+    const dx = to.cx - from.cx;
+    const dy = to.cy - from.cy;
+
+    // Which side is closest to the target?
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal connection (Left/Right)
+        return {
+            x: dx > 0 ? from.cx + from.w / 2 : from.cx - from.w / 2,
+            y: from.cy,
+            side: dx > 0 ? 'right' : 'left'
+        };
+    } else {
+        // Vertical connection (Top/Bottom)
+        return {
+            x: from.cx,
+            y: dy > 0 ? from.cy + from.h / 2 : from.cy - from.h / 2,
+            side: dy > 0 ? 'bottom' : 'top'
+        };
+    }
 }
 
 /**
- * Create a smooth Bezier curve path between two points
- * @param {Object} from - Start point (screen space)
- * @param {Object} to - End point (screen space)
+ * Create a smooth Bezier curve path between two anchor points
+ * @param {Object} from - {x, y, side}
+ * @param {Object} to - {x, y, side}
  * @returns {string} SVG path d attribute
  */
 function createBezierPath(from, to) {
@@ -180,23 +177,32 @@ function createBezierPath(from, to) {
     const dy = to.y - from.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Control point offset
-    const curvature = Math.min(distance * 0.4, 80);
+    // Dynamic curvature based on distance
+    const curvature = Math.min(distance * 0.35, 100);
 
-    let cp1x, cp1y, cp2x, cp2y;
+    let cp1x = from.x;
+    let cp1y = from.y;
+    let cp2x = to.x;
+    let cp2y = to.y;
 
-    if (Math.abs(dy) > Math.abs(dx) * 0.5) {
-        // Primarily vertical
-        cp1x = from.x;
-        cp1y = from.y + curvature * Math.sign(dy);
-        cp2x = to.x;
-        cp2y = to.y - curvature * Math.sign(dy);
-    } else {
-        // Primarily horizontal
-        cp1x = from.x + curvature * Math.sign(dx);
-        cp1y = from.y;
-        cp2x = to.x - curvature * Math.sign(dx);
-        cp2y = to.y;
+    // Start point control
+    if (from.side === 'left') cp1x -= curvature;
+    else if (from.side === 'right') cp1x += curvature;
+    else if (from.side === 'top') cp1y -= curvature;
+    else if (from.side === 'bottom') cp1y += curvature;
+    else {
+        // Fallback if side is unknown (e.g. mouse position)
+        cp1x += (dx > 0 ? curvature : -curvature);
+    }
+
+    // End point control
+    if (to.side === 'left') cp2x -= curvature;
+    else if (to.side === 'right') cp2x += curvature;
+    else if (to.side === 'top') cp2y -= curvature;
+    else if (to.side === 'bottom') cp2y += curvature;
+    else {
+        // Fallback for mouse position in preview
+        cp2x -= (dx > 0 ? curvature : -curvature);
     }
 
     return `M ${from.x} ${from.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${to.x} ${to.y}`;
@@ -257,10 +263,10 @@ function updateConnectionPreview(e) {
         y: e.clientY - containerRect.top
     };
 
-    // Calculate edge point
-    const fromEdge = getEdgePoint(fromCenter, mousePos, fromRect, containerRect);
+    // Calculate anchor point
+    const fromAnchor = getAnchorPoint(fromRect, mousePos, containerRect);
 
-    const d = createBezierPath(fromEdge, mousePos);
+    const d = createBezierPath(fromAnchor, mousePos);
     previewPath.setAttribute('d', d);
 }
 
