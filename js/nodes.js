@@ -189,6 +189,7 @@ function setupNodeEvents(nodeEl, nodeData) {
             if (toToolbar && toToolbar.closest('.node') === nodeEl) return;
             hideToolbar(toolbar);
             contentEl.setAttribute('contenteditable', 'false');
+            window.getSelection().removeAllRanges();
         }, 150);
     });
 
@@ -376,7 +377,10 @@ function hideAllToolbars(excludeNode = null) {
         if (excludeNode && node === excludeNode) return;
         el.setAttribute('contenteditable', 'false');
     });
-    if (!excludeNode) activeToolbar = null;
+    if (!excludeNode) {
+        activeToolbar = null;
+        window.getSelection().removeAllRanges();
+    }
 }
 
 /**
