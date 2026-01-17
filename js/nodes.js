@@ -487,27 +487,11 @@ function setNodeAlignment(nodeEl, nodeData, alignment) {
     let hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed && contentEl.contains(selection.anchorNode);
 
     if (hasSelection) {
-        const range = selection.getRangeAt(0);
-        if (contentEl.contains(range.commonAncestorContainer) || range.commonAncestorContainer === contentEl) {
-            const div = document.createElement('div');
-            div.style.textAlign = alignment;
-            try {
-                const fragment = range.extractContents();
-                div.appendChild(fragment);
-                range.insertNode(div);
-
-                selection.removeAllRanges();
-                const newRange = document.createRange();
-                newRange.selectNodeContents(div);
-                selection.addRange(newRange);
-
-                updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
-                updateConnections(currentMap);
-                return;
-            } catch (e) {
-                console.error('Alignment error', e);
-            }
-        }
+        const cmd = alignment === 'center' ? 'justifyCenter' : (alignment === 'right' ? 'justifyRight' : 'justifyLeft');
+        document.execCommand(cmd, false, null);
+        updateNodeField(nodeData.id, 'content', contentEl.innerHTML);
+        updateConnections(currentMap);
+        return;
     }
 
     // 3. No selection = apply to entire node
@@ -542,16 +526,21 @@ function updateToolbarState(toolbar, contentEl) {
         if (container.nodeType === Node.TEXT_NODE) container = container.parentElement;
 
         if (container && contentEl.contains(container)) {
-            const style = window.getComputedStyle(container);
-
-            // FONT SIZE: Try to get it in pt
-            // If the element has a style.fontSize, it might be in pt already
+            // FONT SIZE: Climb up looking for explicit 'pt'
             let sizePt = 0;
-            const inlineSize = container.style.fontSize;
-            if (inlineSize && inlineSize.endsWith('pt')) {
-                sizePt = parseInt(inlineSize);
-            } else {
-                // Fallback to computed px -> pt
+            let currentNode = container;
+            while (currentNode && contentEl.contains(currentNode)) {
+                const inlineSize = currentNode.style?.fontSize;
+                if (inlineSize && inlineSize.endsWith('pt')) {
+                    sizePt = parseInt(inlineSize);
+                    break;
+                }
+                currentNode = currentNode.parentElement;
+            }
+
+            // Fallback to computed px -> pt 0.75 ratio
+            if (sizePt === 0) {
+                const style = window.getComputedStyle(container);
                 const px = parseFloat(style.fontSize);
                 sizePt = Math.round(px * 0.75);
             }
