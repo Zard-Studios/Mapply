@@ -21,6 +21,7 @@ import {
     initUI,
     showToast,
     setMapTitle,
+    getMapTitle,
     onMapTitleChange,
     renderMapList,
     updateSidebarMapTitle,

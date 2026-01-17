@@ -126,10 +126,18 @@ function setupAIPanel() {
             // Try to parse JSON from response
             const mapData = extractMapJSON(response);
 
+            console.log('[AI] Parsed mapData:', mapData);
+
             if (mapData && mapData.nodes && mapData.nodes.length > 0) {
                 // Create nodes on the canvas!
                 const result = await createMapFromAI(mapData);
-                updateMessage(loadingId, `✨ Ho creato ${result.nodesCreated} nodi sulla mappa!`);
+                if (result.nodesCreated > 0) {
+                    updateMessage(loadingId, `✨ Ho aggiunto ${result.nodesCreated} nodi alla mappa!`);
+                } else if (result.connectionsCreated > 0) {
+                    updateMessage(loadingId, `✨ Ho collegato i nodi esistenti!`);
+                } else {
+                    updateMessage(loadingId, response);
+                }
             } else {
                 // No JSON found, just show the text response
                 updateMessage(loadingId, response);
@@ -406,7 +414,7 @@ async function createMapFromAI(mapData) {
         nodesCreated++;
     });
 
-    // LEVEL 3+: Child nodes below their parents
+    // LEVEL 3+: Child nodes below their parents (new secondary parents)
     secondaryNodes.forEach((secNode, secIndex) => {
         const children = childrenOf.get(secNode.id) || [];
         const secX = secondaryStartX + secIndex * horizontalSpacing - nodeWidth / 2;
@@ -415,7 +423,7 @@ async function createMapFromAI(mapData) {
             const childData = childNodes.find(n => n.id === childId);
             if (!childData) return;
 
-            const childY = secondaryY + verticalSpacing + childIndex * 200; // Was 160
+            const childY = secondaryY + verticalSpacing + childIndex * 200;
             const newNode = createNode({
                 content: parseMarkdownToHTML(childData.content),
                 type: 'child',
@@ -428,7 +436,38 @@ async function createMapFromAI(mapData) {
         });
     });
 
+    // Handle child nodes connected to EXISTING parents
+    childNodes.forEach((childNode, i) => {
+        // Skip if already added
+        if (idMapping.has(childNode.id)) return;
+
+        // Find parent in connections
+        const parentConn = mapData.connections.find(c => c.to === childNode.id);
+        if (!parentConn) return;
+
+        // Check if parent exists in current map
+        if (existingNodeIds.has(parentConn.from)) {
+            // Find parent node position
+            const parentNode = currentMap.nodes.find(n => n.id === parentConn.from);
+            const parentX = parentNode?.x || startX;
+            const parentY = parentNode?.y || startY;
+
+            const newNode = createNode({
+                content: parseMarkdownToHTML(childNode.content),
+                type: 'child',
+                x: parentX,
+                y: parentY + 180 // Below parent
+            });
+            idMapping.set(childNode.id, newNode.id);
+            nodesModule.addNodeToMap(newNode);
+            nodesCreated++;
+
+            console.log('[AI] Added child node connected to existing parent:', childNode.content);
+        }
+    });
+
     // Create connections
+    let connectionsCreated = 0;
     if (mapData.connections) {
         mapData.connections.forEach(conn => {
             const fromId = idMapping.get(conn.from);
@@ -436,6 +475,7 @@ async function createMapFromAI(mapData) {
             if (fromId && toId) {
                 const connection = createConnection(fromId, toId);
                 nodesModule.addConnectionToMap(connection);
+                connectionsCreated++;
             }
         });
     }
@@ -451,5 +491,6 @@ async function createMapFromAI(mapData) {
         if (map) updateConnections(map);
     }, 100);
 
-    return { nodesCreated };
+    console.log('[AI] Created nodes:', nodesCreated, 'connections:', connectionsCreated);
+    return { nodesCreated, connectionsCreated };
 }
