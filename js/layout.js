@@ -14,7 +14,17 @@ export async function autoLayoutMap() {
     const map = getCurrentMap();
     if (!map || !map.nodes || map.nodes.length === 0) return;
 
+    console.log('[AutoLayout] ========================================');
     console.log('[AutoLayout] Starting layout for', map.nodes.length, 'nodes');
+    console.log('[AutoLayout] Connections:', map.connections?.length || 0);
+
+    // Log all connections for debugging
+    console.log('[AutoLayout] Connection details:');
+    map.connections?.forEach(conn => {
+        const fromNode = map.nodes.find(n => n.id === conn.from);
+        const toNode = map.nodes.find(n => n.id === conn.to);
+        console.log('  ', fromNode?.content?.substring(0, 15) || conn.from, '→', toNode?.content?.substring(0, 15) || conn.to);
+    });
 
     // Build graph structure
     const childrenOf = new Map(); // parentId -> [childIds]
@@ -27,15 +37,17 @@ export async function autoLayoutMap() {
     });
 
     // Find root nodes (nodes with no parent)
-    const roots = map.nodes.filter(n => !parentOf.has(n.id));
+    let roots = map.nodes.filter(n => !parentOf.has(n.id));
 
-    // If no roots found, use nodes with type 'main' or just first node
+    console.log('[AutoLayout] Root candidates (no parent):', roots.map(r => r.content?.substring(0, 20)));
+
+    // If no roots found or too many, prioritize by type
     if (roots.length === 0) {
         const mainNode = map.nodes.find(n => n.type === 'main') || map.nodes[0];
-        if (mainNode) roots.push(mainNode);
+        if (mainNode) roots = [mainNode];
     }
 
-    console.log('[AutoLayout] Found roots:', roots.map(r => r.content?.substring(0, 20)));
+    console.log('[AutoLayout] Final roots:', roots.map(r => r.content?.substring(0, 20)));
 
     // Layout settings
     const LEVEL_HEIGHT = 200;      // Vertical spacing between levels
