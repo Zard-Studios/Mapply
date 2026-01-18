@@ -1,10 +1,10 @@
 /**
  * Auto-layout algorithm for mind map nodes
- * Arranges nodes hierarchically based on connections
+ * Arranges nodes in a proper tree hierarchy
  */
 
 /**
- * Auto-arrange all nodes in a clean hierarchical layout
+ * Auto-arrange all nodes in a clean tree layout
  */
 export async function autoLayoutMap() {
     const { getCurrentMap } = await import('./app.js');
@@ -19,116 +19,111 @@ export async function autoLayoutMap() {
     // Build graph structure
     const childrenOf = new Map(); // parentId -> [childIds]
     const parentOf = new Map();   // childId -> parentId
-    const rootNodes = new Set(map.nodes.map(n => n.id));
 
     map.connections.forEach(conn => {
         if (!childrenOf.has(conn.from)) childrenOf.set(conn.from, []);
         childrenOf.get(conn.from).push(conn.to);
         parentOf.set(conn.to, conn.from);
-        rootNodes.delete(conn.to); // Not a root if it has a parent
     });
 
+    // Find root nodes (nodes with no parent)
+    const roots = map.nodes.filter(n => !parentOf.has(n.id));
+
+    // If no roots found, use nodes with type 'main' or just first node
+    if (roots.length === 0) {
+        const mainNode = map.nodes.find(n => n.type === 'main') || map.nodes[0];
+        if (mainNode) roots.push(mainNode);
+    }
+
+    console.log('[AutoLayout] Found roots:', roots.map(r => r.content?.substring(0, 20)));
+
     // Layout settings
-    const HORIZONTAL_SPACING = 320;
-    const VERTICAL_SPACING = 200;
-    const NODE_WIDTH = 200;
+    const LEVEL_HEIGHT = 200;      // Vertical spacing between levels
+    const MIN_NODE_SPACING = 280;  // Minimum horizontal spacing
+    const NODE_WIDTH = 220;
 
     // Get viewport center
     const canvas = document.getElementById('viewport');
-    const rect = canvas?.getBoundingClientRect() || { width: 1200, height: 800 };
-    const centerX = rect.width / 2;
+    const rect = canvas?.getBoundingClientRect() || { width: 1400, height: 900 };
 
-    // Find the main node (or first root)
-    let mainNode = map.nodes.find(n => n.type === 'main');
-    if (!mainNode && rootNodes.size > 0) {
-        mainNode = map.nodes.find(n => rootNodes.has(n.id));
+    // Track positioned nodes
+    const positioned = new Set();
+
+    /**
+     * Calculate the width needed for a subtree
+     */
+    function getSubtreeWidth(nodeId) {
+        const children = childrenOf.get(nodeId) || [];
+        if (children.length === 0) {
+            return MIN_NODE_SPACING;
+        }
+        let totalWidth = 0;
+        children.forEach(childId => {
+            totalWidth += getSubtreeWidth(childId);
+        });
+        return Math.max(totalWidth, MIN_NODE_SPACING);
     }
 
-    // Track positions
-    const positioned = new Set();
-    let currentY = 80;
-
-    // Position a subtree recursively
-    function layoutSubtree(nodeId, level, xStart, xEnd) {
+    /**
+     * Position a node and its children recursively
+     */
+    function layoutNode(nodeId, x, y, availableWidth) {
         const node = map.nodes.find(n => n.id === nodeId);
-        if (!node || positioned.has(nodeId)) return { width: 0 };
+        if (!node || positioned.has(nodeId)) return;
 
         positioned.add(nodeId);
+
+        // Center this node in available width
+        node.x = x + (availableWidth / 2) - (NODE_WIDTH / 2);
+        node.y = y;
+
+        console.log('[AutoLayout] Positioned:', node.content?.substring(0, 20), 'at', node.x, node.y);
+
+        // Get children
         const children = childrenOf.get(nodeId) || [];
+        if (children.length === 0) return;
 
-        if (children.length === 0) {
-            // Leaf node - position at center of available space
-            node.x = (xStart + xEnd) / 2 - NODE_WIDTH / 2;
-            node.y = level * VERTICAL_SPACING + 80;
-            return { width: HORIZONTAL_SPACING };
-        }
+        // Calculate total width needed for children
+        const childWidths = children.map(childId => getSubtreeWidth(childId));
+        const totalChildWidth = childWidths.reduce((a, b) => a + b, 0);
 
-        // Layout children first to determine spacing
-        const childWidths = [];
-        let totalWidth = 0;
+        // Start position for first child
+        let childX = x + (availableWidth / 2) - (totalChildWidth / 2);
 
-        children.forEach(childId => {
-            const childNode = map.nodes.find(n => n.id === childId);
-            if (childNode && !positioned.has(childId)) {
-                const grandChildren = childrenOf.get(childId) || [];
-                const width = Math.max(HORIZONTAL_SPACING, grandChildren.length * HORIZONTAL_SPACING);
-                childWidths.push({ id: childId, width });
-                totalWidth += width;
-            }
+        // Layout each child
+        children.forEach((childId, i) => {
+            layoutNode(childId, childX, y + LEVEL_HEIGHT, childWidths[i]);
+            childX += childWidths[i];
         });
-
-        // Position this node at center
-        const nodeX = (xStart + xEnd) / 2 - NODE_WIDTH / 2;
-        node.x = nodeX;
-        node.y = level * VERTICAL_SPACING + 80;
-
-        // Position children
-        let childX = nodeX - totalWidth / 2 + HORIZONTAL_SPACING / 2;
-        childWidths.forEach(({ id, width }) => {
-            layoutSubtree(id, level + 1, childX - width / 2, childX + width / 2);
-            childX += width;
-        });
-
-        return { width: Math.max(totalWidth, HORIZONTAL_SPACING) };
     }
 
-    // Layout from main node
-    if (mainNode) {
-        layoutSubtree(mainNode.id, 0, 0, rect.width);
-    }
+    // Layout each root tree
+    let rootX = 100;
+    const totalRootWidth = roots.reduce((sum, root) => sum + getSubtreeWidth(root.id), 0);
+    rootX = (rect.width / 2) - (totalRootWidth / 2);
 
-    // Layout any remaining unpositioned root nodes
-    let orphanX = 100;
-    rootNodes.forEach(rootId => {
-        if (!positioned.has(rootId)) {
-            const node = map.nodes.find(n => n.id === rootId);
-            if (node) {
-                node.x = orphanX;
-                node.y = 80;
-                orphanX += HORIZONTAL_SPACING;
-                positioned.add(rootId);
-
-                // Layout its subtree
-                const children = childrenOf.get(rootId) || [];
-                let childX = node.x;
-                children.forEach(childId => {
-                    layoutSubtree(childId, 1, childX, childX + HORIZONTAL_SPACING);
-                    childX += HORIZONTAL_SPACING;
-                });
-            }
-        }
+    roots.forEach(root => {
+        const treeWidth = getSubtreeWidth(root.id);
+        layoutNode(root.id, rootX, 80, treeWidth);
+        rootX += treeWidth;
     });
 
-    // Layout any completely orphan nodes (no connections)
+    // Position any orphan nodes (not connected to anything)
+    let orphanY = 80;
+    let orphanX = rootX + 200;
     map.nodes.forEach(node => {
         if (!positioned.has(node.id)) {
             node.x = orphanX;
-            node.y = 500;
-            orphanX += HORIZONTAL_SPACING;
+            node.y = orphanY;
+            orphanX += MIN_NODE_SPACING;
+            if (orphanX > rect.width - 200) {
+                orphanX = rootX + 200;
+                orphanY += LEVEL_HEIGHT;
+            }
         }
     });
 
-    console.log('[AutoLayout] Layout complete');
+    console.log('[AutoLayout] Layout complete. Positioned:', positioned.size, 'nodes');
 
     // Re-render
     renderAllNodes();
