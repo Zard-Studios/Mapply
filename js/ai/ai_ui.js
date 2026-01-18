@@ -135,7 +135,8 @@ function setupAIPanel() {
                 if (mapData.actions && mapData.actions.length > 0) {
                     const result = await executeMapActions(mapData.actions);
                     const parts = [];
-                    if (result.layoutDone) parts.push('📐 Nodi riordinati');
+                    if (result.reorganized) parts.push('🧠 Mappa riorganizzata intelligentemente');
+                    else if (result.layoutDone) parts.push('📐 Nodi riordinati');
                     if (result.added > 0) parts.push(`+${result.added} nodi`);
                     if (result.edited > 0) parts.push(`✏️ ${result.edited} modificati`);
                     if (result.deleted > 0) parts.push(`🗑️ ${result.deleted} rimossi`);
@@ -342,9 +343,9 @@ async function executeMapActions(actions) {
     const { updateConnections } = await import('../connections.js');
 
     const currentMap = getCurrentMap();
-    if (!currentMap) return { added: 0, edited: 0, deleted: 0, layoutDone: false };
+    if (!currentMap) return { added: 0, edited: 0, deleted: 0, layoutDone: false, reorganized: false };
 
-    let added = 0, edited = 0, deleted = 0, layoutDone = false;
+    let added = 0, edited = 0, deleted = 0, layoutDone = false, reorganized = false;
 
     for (const action of actions) {
         console.log('[AI] Executing action:', action);
@@ -400,10 +401,66 @@ async function executeMapActions(actions) {
                 break;
             }
 
+            case 'connect': {
+                const { createConnection } = await import('../schema.js');
+                const connection = createConnection(action.from, action.to);
+                nodesModule.addConnectionToMap(connection);
+                break;
+            }
+
+            case 'disconnect': {
+                // Remove connection
+                const idx = currentMap.connections.findIndex(c =>
+                    c.from === action.from && c.to === action.to
+                );
+                if (idx !== -1) {
+                    currentMap.connections.splice(idx, 1);
+                }
+                break;
+            }
+
+            case 'move': {
+                const nodeToMove = currentMap.nodes.find(n => n.id === action.id);
+                if (nodeToMove) {
+                    nodeToMove.x = action.x;
+                    nodeToMove.y = action.y;
+                }
+                break;
+            }
+
             case 'layout': {
                 const { autoLayoutMap } = await import('../layout.js');
                 await autoLayoutMap();
                 layoutDone = true;
+                break;
+            }
+
+            case 'reorganize': {
+                // AI provides the correct structure - we rebuild connections and layout
+                if (action.structure) {
+                    const { createConnection } = await import('../schema.js');
+
+                    // Clear ALL existing connections
+                    currentMap.connections = [];
+
+                    // Create new connections based on AI's hierarchy
+                    if (action.structure.hierarchy) {
+                        action.structure.hierarchy.forEach(level => {
+                            level.childIds.forEach(childId => {
+                                const conn = createConnection(level.parentId, childId);
+                                currentMap.connections.push(conn);
+                            });
+                        });
+                    }
+
+                    console.log('[AI] Reorganize: Created', currentMap.connections.length, 'connections');
+                }
+
+                // Now run auto-layout with correct connections
+                const { autoLayoutMap } = await import('../layout.js');
+                await autoLayoutMap();
+                layoutDone = true;
+                reorganized = true;
                 break;
             }
         }
@@ -415,7 +472,7 @@ async function executeMapActions(actions) {
         setTimeout(() => updateConnections(currentMap), 100);
     }
 
-    return { added, edited, deleted, layoutDone };
+    return { added, edited, deleted, layoutDone, reorganized };
 }
 
 /**
