@@ -135,6 +135,7 @@ function setupAIPanel() {
                 if (mapData.actions && mapData.actions.length > 0) {
                     const result = await executeMapActions(mapData.actions);
                     const parts = [];
+                    if (result.layoutDone) parts.push('📐 Nodi riordinati');
                     if (result.added > 0) parts.push(`+${result.added} nodi`);
                     if (result.edited > 0) parts.push(`✏️ ${result.edited} modificati`);
                     if (result.deleted > 0) parts.push(`🗑️ ${result.deleted} rimossi`);
@@ -341,9 +342,9 @@ async function executeMapActions(actions) {
     const { updateConnections } = await import('../connections.js');
 
     const currentMap = getCurrentMap();
-    if (!currentMap) return { added: 0, edited: 0, deleted: 0 };
+    if (!currentMap) return { added: 0, edited: 0, deleted: 0, layoutDone: false };
 
-    let added = 0, edited = 0, deleted = 0;
+    let added = 0, edited = 0, deleted = 0, layoutDone = false;
 
     for (const action of actions) {
         console.log('[AI] Executing action:', action);
@@ -398,14 +399,23 @@ async function executeMapActions(actions) {
                 deleted++;
                 break;
             }
+
+            case 'layout': {
+                const { autoLayoutMap } = await import('../layout.js');
+                await autoLayoutMap();
+                layoutDone = true;
+                break;
+            }
         }
     }
 
-    // Render and update
-    nodesModule.renderAllNodes();
-    setTimeout(() => updateConnections(currentMap), 100);
+    // Render and update (unless layout already did it)
+    if (!layoutDone) {
+        nodesModule.renderAllNodes();
+        setTimeout(() => updateConnections(currentMap), 100);
+    }
 
-    return { added, edited, deleted };
+    return { added, edited, deleted, layoutDone };
 }
 
 /**
