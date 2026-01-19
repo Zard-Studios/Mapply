@@ -50,9 +50,10 @@ export async function autoLayoutMap() {
     console.log('[AutoLayout] Final roots:', roots.map(r => r.content?.substring(0, 20)));
 
     // Layout settings
-    const LEVEL_HEIGHT = 200;      // Vertical spacing between levels
-    const MIN_NODE_SPACING = 280;  // Minimum horizontal spacing
-    const NODE_WIDTH = 220;
+    const LEVEL_HEIGHT = 220;      // Vertical spacing between levels
+    const MIN_NODE_SPACING = 50;   // Minimum gap between nodes
+    const BASE_NODE_WIDTH = 180;   // Base width for short content
+    const CHAR_WIDTH = 7;          // Approximate pixels per character
 
     // Get viewport center
     const canvas = document.getElementById('viewport');
@@ -62,18 +63,39 @@ export async function autoLayoutMap() {
     const positioned = new Set();
 
     /**
+     * Estimate node width based on content length
+     */
+    function estimateNodeWidth(nodeId) {
+        const node = map.nodes.find(n => n.id === nodeId);
+        if (!node) return BASE_NODE_WIDTH;
+
+        // Strip HTML and get text length
+        const text = (node.content || '').replace(/<[^>]*>/g, '');
+        // Estimate width: each line is ~25-30 chars, node wraps text
+        const charsPerLine = 25;
+        const numLines = Math.ceil(text.length / charsPerLine);
+        const width = Math.min(text.length, charsPerLine) * CHAR_WIDTH + 40; // padding
+
+        return Math.max(BASE_NODE_WIDTH, Math.min(width, 350)); // Cap at 350px
+    }
+
+    /**
      * Calculate the width needed for a subtree
      */
     function getSubtreeWidth(nodeId) {
+        const nodeWidth = estimateNodeWidth(nodeId);
         const children = childrenOf.get(nodeId) || [];
+
         if (children.length === 0) {
-            return MIN_NODE_SPACING;
+            return nodeWidth + MIN_NODE_SPACING;
         }
+
         let totalWidth = 0;
         children.forEach(childId => {
             totalWidth += getSubtreeWidth(childId);
         });
-        return Math.max(totalWidth, MIN_NODE_SPACING);
+
+        return Math.max(totalWidth, nodeWidth + MIN_NODE_SPACING);
     }
 
     /**
@@ -85,8 +107,9 @@ export async function autoLayoutMap() {
 
         positioned.add(nodeId);
 
-        // Center this node in available width
-        node.x = x + (availableWidth / 2) - (NODE_WIDTH / 2);
+        // Center this node in available width, using estimated width
+        const nodeWidth = estimateNodeWidth(nodeId);
+        node.x = x + (availableWidth / 2) - (nodeWidth / 2);
         node.y = y;
 
         console.log('[AutoLayout] Positioned:', node.content?.substring(0, 20), 'at', node.x, node.y);
