@@ -652,13 +652,17 @@ async function createMapFromAI(mapData) {
     // Create connections
     let connectionsCreated = 0;
     if (mapData.connections) {
+        console.log('[AI] Creating connections, idMapping size:', idMapping.size);
         mapData.connections.forEach(conn => {
             const fromId = idMapping.get(conn.from);
             const toId = idMapping.get(conn.to);
+            console.log('[AI] Connection:', conn.from, '->', conn.to, '| Mapped:', fromId, '->', toId);
             if (fromId && toId) {
                 const connection = createConnection(fromId, toId);
                 nodesModule.addConnectionToMap(connection);
                 connectionsCreated++;
+            } else {
+                console.warn('[AI] Missing ID mapping for connection:', conn);
             }
         });
     }
@@ -666,14 +670,22 @@ async function createMapFromAI(mapData) {
     // Render everything
     nodesModule.renderAllNodes();
 
-    // Force connection update after DOM settles
-    setTimeout(async () => {
-        const { updateConnections } = await import('../connections.js');
-        const { getCurrentMap } = await import('../app.js');
-        const map = getCurrentMap();
-        if (map) updateConnections(map);
-    }, 100);
-
     console.log('[AI] Created nodes:', nodesCreated, 'connections:', connectionsCreated);
+
+    // ALWAYS run auto-layout after creating new nodes to position them properly
+    if (nodesCreated > 0) {
+        console.log('[AI] Running auto-layout for new nodes...');
+        const { autoLayoutMap } = await import('../layout.js');
+        await autoLayoutMap();
+    } else {
+        // Just update connections
+        setTimeout(async () => {
+            const { updateConnections } = await import('../connections.js');
+            const { getCurrentMap } = await import('../app.js');
+            const map = getCurrentMap();
+            if (map) updateConnections(map);
+        }, 100);
+    }
+
     return { nodesCreated, connectionsCreated };
 }
