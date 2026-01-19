@@ -126,6 +126,12 @@ function setupAIPanel() {
             // Try to parse JSON from response
             const mapData = extractMapJSON(response);
 
+            // Extract text WITHOUT the JSON block for display
+            const cleanResponse = response
+                .replace(/```json[\s\S]*?```/g, '')  // Remove ```json blocks
+                .replace(/\{[\s\S]*"(?:nodes|actions)"[\s\S]*\}/g, '')  // Remove raw JSON
+                .trim();
+
             console.log('[AI] Parsed mapData:', mapData);
 
             if (mapData) {
@@ -135,26 +141,35 @@ function setupAIPanel() {
                 if (mapData.actions && mapData.actions.length > 0) {
                     const result = await executeMapActions(mapData.actions);
                     const parts = [];
-                    if (result.reorganized) parts.push('🧠 Mappa riorganizzata intelligentemente');
+                    if (result.reorganized) parts.push('🧠 Mappa riorganizzata');
                     else if (result.layoutDone) parts.push('📐 Nodi riordinati');
                     if (result.added > 0) parts.push(`+${result.added} nodi`);
                     if (result.edited > 0) parts.push(`✏️ ${result.edited} modificati`);
                     if (result.deleted > 0) parts.push(`🗑️ ${result.deleted} rimossi`);
-                    resultMessage = parts.length > 0 ? `✨ ${parts.join(', ')}` : response;
+
+                    // Show action summary + any text the AI wrote
+                    if (parts.length > 0) {
+                        resultMessage = `✨ ${parts.join(', ')}`;
+                        if (cleanResponse) resultMessage += `\n\n${cleanResponse}`;
+                    } else {
+                        resultMessage = cleanResponse || 'Azione completata!';
+                    }
                     updateMessage(loadingId, resultMessage);
                 }
                 // Old format with nodes/connections
                 else if (mapData.nodes && mapData.nodes.length > 0) {
                     const result = await createMapFromAI(mapData);
                     if (result.nodesCreated > 0) {
-                        updateMessage(loadingId, `✨ Ho aggiunto ${result.nodesCreated} nodi alla mappa!`);
+                        resultMessage = `✨ Ho creato ${result.nodesCreated} nodi!`;
+                        if (cleanResponse) resultMessage += `\n\n${cleanResponse}`;
+                        updateMessage(loadingId, resultMessage);
                     } else if (result.connectionsCreated > 0) {
                         updateMessage(loadingId, `✨ Ho collegato i nodi esistenti!`);
                     } else {
-                        updateMessage(loadingId, response);
+                        updateMessage(loadingId, cleanResponse || response);
                     }
                 } else {
-                    updateMessage(loadingId, response);
+                    updateMessage(loadingId, cleanResponse || response);
                 }
             } else {
                 // No JSON found, just show the text response
@@ -216,22 +231,30 @@ async function getCurrentMapContext() {
             return null;
         }
 
-        // Build context with actual IDs
-        let context = `NODI ESISTENTI (usa questi ID per collegare nuovi nodi):\n`;
+        // Build context with IDs, content, and POSITIONS
+        let context = `NODI ESISTENTI (${map.nodes.length} nodi):\n`;
         map.nodes.forEach(node => {
             const typeLabel = node.type === 'main' ? 'PRINCIPALE' :
                 node.type === 'secondary' ? 'SECONDARIO' : 'DETTAGLIO';
-            const content = node.content?.substring(0, 60) || '(vuoto)';
-            context += `- ID: "${node.id}" | Tipo: ${typeLabel} | Contenuto: "${content}"\n`;
+            // Strip HTML for cleaner content display
+            const rawContent = (node.content || '').replace(/<[^>]*>/g, '');
+            const content = rawContent.substring(0, 50) || '(vuoto)';
+            const pos = `x:${Math.round(node.x || 0)}, y:${Math.round(node.y || 0)}`;
+            context += `• ID:"${node.id}" | ${typeLabel} | Pos:[${pos}] | "${content}"\n`;
         });
 
         // Add connections info
         if (map.connections && map.connections.length > 0) {
-            context += `\nCONNESSIONI ESISTENTI:\n`;
-
+            context += `\nCONNESSIONI (${map.connections.length}):\n`;
             map.connections.forEach(conn => {
-                context += `- "${conn.from}" → "${conn.to}"\n`;
+                const fromNode = map.nodes.find(n => n.id === conn.from);
+                const toNode = map.nodes.find(n => n.id === conn.to);
+                const fromName = (fromNode?.content || '').replace(/<[^>]*>/g, '').substring(0, 20);
+                const toName = (toNode?.content || '').replace(/<[^>]*>/g, '').substring(0, 20);
+                context += `• "${fromName}..." → "${toName}..."\n`;
             });
+        } else {
+            context += `\n⚠️ NESSUNA CONNESSIONE - I nodi non sono collegati!\n`;
         }
 
         return context;
